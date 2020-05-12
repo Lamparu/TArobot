@@ -15,19 +15,19 @@ class LexerClass:
         'or': 'OR',
         'and': 'AND',
         'not': 'NOT',
-        'begin': 'BEGIN',
-        'end': 'END',
-        'do': 'DO',
-        'while': 'WHILE',
-        'if': 'IF',
-        'then': 'THEN',
-        'else': 'ELSE',
-        'move': 'MOVE',
-        'right': 'RIGHT',
-        'left': 'LEFT',
-        'lms': 'LMS',
-        'function': 'FUNC',
-        'return': 'RETURN',
+        # 'begin': 'BEGIN',
+        # 'end': 'END',
+        # 'do': 'DO',
+        # 'while': 'WHILE',
+        # 'if': 'IF',
+        # 'then': 'THEN',
+        # 'else': 'ELSE',
+        # 'move': 'MOVE',
+        # 'right': 'RIGHT',
+        # 'left': 'LEFT',
+        # 'lms': 'LMS',
+        # 'function': 'FUNC',
+        # 'return': 'RETURN',
         'first': 'FIRST',
         'second': 'SECOND',
         'smaller': 'SMALLER',
@@ -38,9 +38,11 @@ class LexerClass:
     }
 
     tokens = [
-        'LOGICLIT', 'INTLIT', 'SHORTLIT', 'STRLIT',
+        'INTLIT', 'SHORTLIT', 'STRLIT',
         'OPBR', 'CLBR', 'OPSQBR', 'CLSQBR', 'OPCUBR', 'CLCUBR',
-        'ENDSTR', 'NL', 'ANY', 'SP', 'COMMA', 'VECTOROF'
+        'ENDSTR',
+        'NL',# 'ANY', 'SP',
+        'COMMA', 'VECTOROF'
     ] + list(reserved.values())
 
     # t_OPBR = r'\('
@@ -130,15 +132,14 @@ class LexerClass:
         return t
 
 
-data1 = '''sizeof(short int)
-45 second larger 56
+data1 = '''vector of int matrix[2][2] set {{3, 5},{3, 4, 7}};
 '''
 if __name__ == '__main__':
     f = open('algosort.txt')
     data = f.read().lower()
     f.close()
     l = LexerClass()
-    l.input(data)
+    l.input(data1)
     while True:
         tok = l.token()
         if not tok:

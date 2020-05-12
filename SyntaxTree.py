@@ -18,7 +18,7 @@ class node(object):
         # offset
         if self is None:
             return
-        print(' ' * lvl, self)
+        print('\t' * lvl, self)
         if isinstance(self.child, list):
             for child in self.child:
                 child.print(lvl + 1)
