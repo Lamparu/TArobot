@@ -12,6 +12,7 @@ class ParserClass:
         self.lexer = LexerClass()
         self.parser = yacc.yacc(module=self, optimize=1, debug=False, write_tables=False)
         self.flag = False
+        self.func = dict()
 
     def parse(self, s):
         try:
@@ -24,21 +25,52 @@ class ParserClass:
         """program : stat_list"""
         p[0] = node('program', ch=p[1], no=p.lineno(1))
 
-    def p_stat_list(self, p):
-        """stat_list : stat_list statement ENDSTR NL
-                    | statement ENDSTR NL"""
-        if len(p) == 4:
-            p[2] = node('EOS', val=p[2])
-            p[0] = node('statement list', ch=[p[1], p[2]], no=p.lineno(1))
+    def p_stat_group(self, p):
+        """stat_group : BEGIN NL stat_list END NL
+                        | statement"""
+        if p[1] == 'begin':
+            p[1] = node('border', val=p[1], no=p.lineno(1))
+            p[4] = node('border', val=p[4], no=p.lineno(1))
+            p[0] = node('group_stat', ch=[p[1], p[3], p[4]], no=p.lineno(1))
         else:
-            p[3] = node('EOS', val=p[3])
-            p[0] = node('statement list', ch=[p[1], p[2], p[3]], no=p.lineno(2))
+            p[0] = p[1]
+
+    def p_stat_list(self, p):
+        """stat_list : stat_list statement
+                    | statement
+                    | NL"""
+        if len(p) == 3:
+            p[0] = node('statement list', ch=[p[1], p[2]], no=p.lineno(2))
+        else:
+            if p[0] != '\n':
+                p[0] = p[1]
+            else:
+                p[0] = node('NL', no=p.lineno(1))
 
     def p_statement(self, p):
-        """statement : declaration
-                    | assignment
-                    | sizeof"""
-        p[0] = p[1]
+        """statement : declaration ENDSTR NL
+                    | assignment ENDSTR NL
+                    | sizeof ENDSTR NL
+                    | while ENDSTR NL
+                    | if
+                    | function
+                    | callfunc ENDSTR NL
+                    | command ENDSTR NL
+                    | ENDSTR NL"""
+        if len(p) == 4 or len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = node('EOS', no=p.lineno(1))
+
+    def p_declaration(self, p):
+        """declaration : type var_list"""
+        p[0] = node('declaration', ch=[p[1], p[2]], no=p.lineno(2))
+
+    def p_assignment(self, p):
+        """assignment : variable SET expr
+                        | variable SET arr_start
+                        | vec_var SET arr_start"""
+        p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
 
     def p_type(self, p):
         """type : INT
@@ -73,6 +105,7 @@ class ParserClass:
     def p_expr(self, p):
         """expr : variable
                 | const
+                | callfunc
                 | math_expr"""
         p[0] = p[1]
         #p[0] = node('expression', ch=p[1], no=p.lineno(1))
@@ -99,6 +132,23 @@ class ParserClass:
         p[3] = node('bracket', val=p[3], no=p.lineno(3))
         p[0] = node('expression', ch=[p[1], p[2], p[3]], no=p.lineno(2))
 
+    def p_callfunc(self, p):
+        """callfunc : STRLIT OPBR var_arr CLBR"""  # TODO: проверка на наличие функции
+        p[0] = node('call_func', val=p[1], ch=p[3], no=p.lineno(1))
+
+    def p_var_arr(self, p):
+        """var_arr : variable
+                    | const
+                    | var_arr COMMA const
+                    | var_arr COMMA variable
+                    | """
+        if len(p) == 2:
+            p[0] = p[1]
+        elif len(p) == 4:
+            p[0] = node('func_param', ch=[p[1], p[3]], no=p.lineno(1))
+        else:
+            p[0] = node('func_param', val='none')
+
     def p_const(self, p):
         """const : digit
                 | bool
@@ -110,10 +160,6 @@ class ParserClass:
                 | SIZEOF OPBR STRLIT CLBR"""
         p[0] = node('sizeof', val=p[1], ch=p[3], no=p.lineno(1))
 
-    def p_declaration(self, p):
-        """declaration : type var_list"""
-        p[0] = node('declaration', ch=[p[1], p[2]], no=p.lineno(2))
-
     def p_var_list(self, p):
         """var_list : variable
                     | assignment
@@ -123,12 +169,6 @@ class ParserClass:
             #p[0] = node('vars', ch=p[1], no=p.lineno(1))
         else:
             p[0] = node('vars', ch=[p[1], p[3]], no=p.lineno(1))
-
-    def p_assignment(self, p):
-        """assignment : variable SET expr
-                        | variable SET arr_start
-                        | vec_var SET arr_start"""
-        p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
 
     def p_vec_var(self, p):
         """vec_var : vectorof variable"""
@@ -192,6 +232,46 @@ class ParserClass:
             p[0] = node('index', val=p[2], no=p.lineno(2))
         else:
             p[0] = node('index', val=p[2], ch=p[4], no=p.lineno(2))
+
+    def p_while(self, p):
+        """while : DO NL stat_group WHILE expr"""
+        p[0] = node('do_while', ch={'body': p[3], 'condition': p[5]}, no=p.lineno(2))
+
+    def p_if(self, p):
+        """if : IF expr THEN NL stat_group ELSE NL stat_group
+                | IF expr THEN NL stat_group ELSE ENDSTR NL"""
+        if p[7] != ';':
+            p[0] = node('if_th_el', ch={'condition': p[2], 'body_1': p[5], 'body_2': p[8]}, no=p.lineno(2))
+        else:
+            p[0] = node('if_then', ch={'condition': p[2], 'body': p[5]}, no=p.lineno(2))
+
+    def p_function(self, p):
+        """function : FUNCTION STRLIT OPBR typearr CLBR NL stat_group RETURN expr ENDSTR NL"""
+        p[0] = node('function', val=str(p[2]), ch={'parameters': p[4], 'body': p[7], 'return': p[9]}, no=p.lineno(1))
+        self.func[p[2]] = p[0]
+
+    def p_typearr(self, p):
+        """typearr : type variable
+                    | typearr COMMA typearr
+                    | """
+        if len(p) == 3:
+            p[0] = node('param', val=p[1], ch=p[2], no=p.lineno(1))
+        elif len(p) == 4:
+            p[0] = node('param arr', ch=[p[1], p[3]], no=p.lineno(1))
+        else:
+            p[0] = node('param', val='none')
+
+    def p_command(self, p):
+        """command : MOVE
+                    | MOVE RIGHT
+                    | MOVE LEFT
+                    | LEFT
+                    | RIGHT
+                    | LMS"""
+        if len(p) == 2:
+            p[0] = node('command', val=p[1], no=p.lineno(1))
+        else:
+            p[0] = node('command', val=str(p[1])+' '+str(p[2]))
 
     def p_error(self, p):
         print("Syntax error in input!")

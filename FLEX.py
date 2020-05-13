@@ -15,19 +15,19 @@ class LexerClass:
         'or': 'OR',
         'and': 'AND',
         'not': 'NOT',
-        # 'begin': 'BEGIN',
-        # 'end': 'END',
-        # 'do': 'DO',
-        # 'while': 'WHILE',
-        # 'if': 'IF',
-        # 'then': 'THEN',
-        # 'else': 'ELSE',
-        # 'move': 'MOVE',
-        # 'right': 'RIGHT',
-        # 'left': 'LEFT',
-        # 'lms': 'LMS',
-        # 'function': 'FUNC',
-        # 'return': 'RETURN',
+        'begin': 'BEGIN',
+        'end': 'END',
+        'do': 'DO',
+        'while': 'WHILE',
+        'if': 'IF',
+        'then': 'THEN',
+        'else': 'ELSE',
+        'move': 'MOVE',
+        'right': 'RIGHT',
+        'left': 'LEFT',
+        'lms': 'LMS',
+        'function': 'FUNCTION',
+        'return': 'RETURN',
         'first': 'FIRST',
         'second': 'SECOND',
         'smaller': 'SMALLER',
@@ -132,7 +132,12 @@ class LexerClass:
         return t
 
 
-data1 = '''vector of int matrix[2][2] set {{3, 5},{3, 4, 7}};
+data1 = '''function myfunc(int a, bool f)
+a set f;
+return a;
+lms;
+move left;
+myfunc(one, two);
 '''
 if __name__ == '__main__':
     f = open('algosort.txt')
