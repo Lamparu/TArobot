@@ -132,7 +132,7 @@ class LexerClass:
         return t
 
 
-data1 = '''vector of vector of int matrix[3][2] set {{2, 1}, {3, 4}, {6, 7}};
+data1 = '''short int var;
 '''
 if __name__ == '__main__':
     f = open('algosort.txt')

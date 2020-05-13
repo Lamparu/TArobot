@@ -1,3 +1,4 @@
+import sys
 import ply.yacc as yacc
 from FLEX import LexerClass
 from SyntaxTree import node
@@ -17,9 +18,9 @@ class ParserClass:
     def parse(self, s):
         try:
             res = self.parser.parse(s)
-            return res
+            return res, self.func
         except LexError:
-            print('Illegal token ' + s)
+            sys.stderr.write(f'Illegal token {s}\n')
 
     def p_program(self, p):
         """program : stat_list"""
@@ -268,7 +269,10 @@ class ParserClass:
             p[0] = node('command', val=str(p[1])+' '+str(p[2]))
 
     def p_error(self, p):
-        print("Syntax error in input!")
+        try:
+            sys.stderr.write(f'Syntax error at {p.lineno} line\n')
+        except Exception:
+            sys.stderr.write(f'Syntax error in input!')
 
 
 
@@ -277,5 +281,5 @@ if __name__ == '__main__':
     data = f.read().lower()
     f.close()
     parser = ParserClass()
-    tree = parser.parser.parse(data, debug=True)
+    tree = parser.parser.parse(data1, debug=True)
     tree.print()
