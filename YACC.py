@@ -68,9 +68,12 @@ class ParserClass:
 
     def p_assignment(self, p):
         """assignment : variable SET expr
-                        | variable SET arr_start
-                        | vec_var SET arr_start"""
-        p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
+                        | variable SET OPCUBR arr_set CLCUBR
+                        | vec_var SET OPCUBR arr_set CLCUBR"""
+        if len(p) == 4:
+            p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
+        else:
+            p[0] = node('assignment', val=p[2], ch=[p[1], p[4]], no=p.lineno(1))
 
     def p_type(self, p):
         """type : INT
@@ -78,9 +81,9 @@ class ParserClass:
                 | SHORT
                 | BOOL"""
         if len(p) == 2:
-            p[0] = node('type', val=p[1], ch=[], no=p.lineno(1))
+            p[0] = node('type', val=p[1], no=p.lineno(1))
         else:
-            p[0] = node('type', val=p[1]+' '+p[2], ch=[], no=p.lineno(1))
+            p[0] = node('type', val=p[1]+' '+p[2], no=p.lineno(1))
 
     def p_type_vec(self, p):
         """type : vectorof"""
@@ -157,7 +160,7 @@ class ParserClass:
 
     def p_sizeof(self, p):
         """sizeof : SIZEOF OPBR type CLBR
-                | SIZEOF OPBR STRLIT CLBR"""
+                | SIZEOF OPBR variable CLBR"""
         p[0] = node('sizeof', val=p[1], ch=p[3], no=p.lineno(1))
 
     def p_var_list(self, p):
@@ -166,7 +169,6 @@ class ParserClass:
                     | var_list COMMA var_list """
         if len(p) == 2:
             p[0] = p[1]
-            #p[0] = node('vars', ch=p[1], no=p.lineno(1))
         else:
             p[0] = node('vars', ch=[p[1], p[3]], no=p.lineno(1))
 
@@ -174,40 +176,30 @@ class ParserClass:
         """vec_var : vectorof variable"""
         p[0] = node('arr', val=p[1], ch=p[2], no=p.lineno(1))
 
-    # def p_arr_set(self, p):
-    #     """arr_set : OPCUBR arr_start CLCUBR"""
+    def p_arr_set(self, p):
+        """arr_set : OPCUBR const_arr CLCUBR
+                    | arr_set COMMA OPCUBR const_arr CLCUBR
+                    | const_arr"""
+        if len(p) == 4:
+            p[0] = node('array', ch=p[2], no=p.lineno(2))
+        elif len(p) == 6:
+            p[0] = node('array', ch=[p[1], p[4]], no=p.lineno(1))
+        else:
+            p[0] = p[1]
+
+    # def p_arr_start(self, p):
+    #     """arr_start : OPCUBR OPCUBR const_arr CLCUBR COMMA"""
+    #     p[1] = node('bracket', val=p[1], no=p.lineno(1))
+    #     p[2] = node('bracket', val=p[2], no=p.lineno(2))
+    #     p[4] = node('bracket', val=p[4], no=p.lineno(4))
+    #     p[0] = node('array list', ch=[p[1], p[2], p[3], p[4]], no=p.lineno(3))
+    #
+    # def p_arr_end(self, p):
+    #     """arr_end : OPCUBR const_arr CLCUBR CLCUBR"""
     #     p[1] = node('bracket', val=p[1], no=p.lineno(1))
     #     p[3] = node('bracket', val=p[3], no=p.lineno(3))
-    #     p[0] = node('array', ch=[p[1], p[2], p[3]], no=p.lineno(2))
-
-    def p_arr_start(self, p):
-        """arr_start : OPCUBR arr_end arr_end CLCUBR
-                    | OPCUBR const_arr CLCUBR"""
-        if len(p) == 5:
-            p[1] = node('bracket', val=p[1], no=p.lineno(1))
-            p[4] = node('bracket', val=p[4], no=p.lineno(1))
-            p[0] = node('array list', ch=[p[1], p[2], p[3], p[4]], no=p.lineno(1))
-        elif len(p) == 4:
-            p[1] = node('bracket', val=p[1], no=p.lineno(1))
-            p[3] = node('bracket', val=p[3], no=p.lineno(1))
-            p[0] = node('array list', ch=[p[1], p[2], p[3]], no=p.lineno(1))
-
-
-    def p_arr_end(self, p):
-        """arr_end : CLCUBR COMMA
-                    | CLCUBR
-                    | OPCUBR const_arr arr_end
-                    | OPCUBR arr_end"""
-        if len(p) == 2:
-            p[0] = node('bracket', val=p[1], no=p.lineno(1))
-        elif len(p) == 3:
-            if p[2] != ',':
-                p[0] = node('bracket', val=p[1], ch=p[2], no=p.lineno(1))
-            else:
-                p[0] = node('bracket', val=p[1], no=p.lineno(1))
-        else:
-            p[1] = node('bracket', val=p[1], no=p.lineno(1))
-            p[0] = node('array list', ch=[p[1], p[2], p[3]], no=p.lineno(1))
+    #     p[4] = node('bracket', val=p[4], no=p.lineno(4))
+    #     p[0] = node('array list', ch=[p[1], p[2], p[3], p[4]], no=p.lineno(1))
 
     def p_const_arr(self, p):
         """const_arr : const
@@ -227,7 +219,9 @@ class ParserClass:
 
     def p_index(self, p):
         """index : OPSQBR digit CLSQBR
-                | OPSQBR digit CLSQBR index"""
+                | OPSQBR variable CLSQBR
+                | OPSQBR digit CLSQBR index
+                | OPSQBR variable CLSQBR index"""
         if len(p) == 4:
             p[0] = node('index', val=p[2], no=p.lineno(2))
         else:
@@ -279,6 +273,9 @@ class ParserClass:
 
 
 if __name__ == '__main__':
+    f = open('algosort.txt')
+    data = f.read().lower()
+    f.close()
     parser = ParserClass()
-    tree = parser.parser.parse(data1, debug=True)
+    tree = parser.parser.parse(data, debug=True)
     tree.print()

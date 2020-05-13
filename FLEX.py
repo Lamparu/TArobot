@@ -132,19 +132,14 @@ class LexerClass:
         return t
 
 
-data1 = '''function myfunc(int a, bool f)
-a set f;
-return a;
-lms;
-move left;
-myfunc(one, two);
+data1 = '''vector of vector of int matrix[3][2] set {{2, 1}, {3, 4}, {6, 7}};
 '''
 if __name__ == '__main__':
     f = open('algosort.txt')
     data = f.read().lower()
     f.close()
     l = LexerClass()
-    l.input(data1)
+    l.input(data)
     while True:
         tok = l.token()
         if not tok:
