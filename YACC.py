@@ -14,11 +14,12 @@ class ParserClass:
         self.parser = yacc.yacc(module=self, optimize=1, debug=False, write_tables=False)
         self.flag = False
         self.func = dict()
+        self.correct = True
 
     def parse(self, s):
         try:
             res = self.parser.parse(s)
-            return res, self.func
+            return res, self.func, self.correct
         except LexError:
             sys.stderr.write(f'Illegal token {s}\n')
 
@@ -52,7 +53,7 @@ class ParserClass:
         """statement : declaration ENDSTR NL
                     | assignment ENDSTR NL
                     | sizeof ENDSTR NL
-                    | while ENDSTR NL
+                    | while
                     | if
                     | function
                     | callfunc ENDSTR NL
@@ -75,6 +76,13 @@ class ParserClass:
             p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
         else:
             p[0] = node('assignment', val=p[2], ch=[p[1], p[4]], no=p.lineno(1))
+
+    def p_ass_error(self, p):
+        """assignment : variable SET error
+                        | vec_var SET error
+                         | vec_var"""
+        p[0] = node('error', val='Wrong assignment', ch=p[1], no=p.lineno(1))
+        sys.stderr.write(f'>>> Wrong assignment\n')
 
     def p_type(self, p):
         """type : INT
@@ -130,6 +138,12 @@ class ParserClass:
         else:
             p[0] = node('calculation', val=p[2]+' '+p[3], ch=[p[1], p[4]], no=p.lineno(1))
 
+    def p_mexp_error(self, p):
+        """math_expr : expr SMALLER expr
+                    | expr LARGER expr"""
+        p[0] = node('error', val='Comparison error', ch=[p[1], p[3]], no=p.lineno(1))
+        sys.stderr.write(f'>>> Wrong comparison\n')
+
     def p_expr_br(self, p):
         """expr : OPBR expr CLBR"""
         p[1] = node('bracket', val=p[1], no=p.lineno(1))
@@ -143,13 +157,13 @@ class ParserClass:
     def p_var_arr(self, p):
         """var_arr : variable
                     | const
-                    | var_arr COMMA const
-                    | var_arr COMMA variable
+                    | var_arr const
+                    | var_arr variable
                     | """
         if len(p) == 2:
             p[0] = p[1]
-        elif len(p) == 4:
-            p[0] = node('func_param', ch=[p[1], p[3]], no=p.lineno(1))
+        elif len(p) == 3:
+            p[0] = node('func_param', ch=[p[1], p[2]], no=p.lineno(1))
         else:
             p[0] = node('func_param', val='none')
 
@@ -229,8 +243,12 @@ class ParserClass:
             p[0] = node('index', val=p[2], ch=p[4], no=p.lineno(2))
 
     def p_while(self, p):
-        """while : DO NL stat_group WHILE expr"""
+        """while : DO NL stat_group WHILE expr ENDSTR NL"""
         p[0] = node('do_while', ch={'body': p[3], 'condition': p[5]}, no=p.lineno(2))
+
+    # def p_while_error(self, p):
+    #     """while : DO error"""
+    #     p[0] = node('error', val='Wrong do-while declaration', no=p.lineno(1))
 
     def p_if(self, p):
         """if : IF expr THEN NL stat_group ELSE NL stat_group
@@ -240,21 +258,34 @@ class ParserClass:
         else:
             p[0] = node('if_then', ch={'condition': p[2], 'body': p[5]}, no=p.lineno(2))
 
+    def p_if_error(self, p):
+        """if : IF expr error"""
+        p[0] = node('error', val='Wrong if declaration', ch=p[2], no=p.lineno(1))
+
     def p_function(self, p):
         """function : FUNCTION STRLIT OPBR typearr CLBR NL stat_group RETURN expr ENDSTR NL"""
         p[0] = node('function', val=str(p[2]), ch={'parameters': p[4], 'body': p[7], 'return': p[9]}, no=p.lineno(1))
         self.func[p[2]] = p[0]
 
+    def p_func_error(self, p):
+        """function : FUNCTION error"""
+        p[0] = node('error', val='Wrong function declaration', ch=p[1], no=p.lineno(1))
+        sys.stderr.write(f'>>> Wrong function declaration\n')
+
     def p_typearr(self, p):
-        """typearr : type variable
-                    | typearr COMMA typearr
+        """typearr : typevar
+                    | typearr typevar
                     | """
-        if len(p) == 3:
-            p[0] = node('param', val=p[1], ch=p[2], no=p.lineno(1))
-        elif len(p) == 4:
-            p[0] = node('param arr', ch=[p[1], p[3]], no=p.lineno(1))
+        if len(p) == 2:
+            p[0] = p[1]
+        elif len(p) == 3:
+            p[0] = node('param arr', ch=[p[1], p[2]], no=p.lineno(1))
         else:
             p[0] = node('param', val='none')
+
+    def p_typevar(self, p):
+        """typevar : type variable"""
+        p[0] = node('param', val=p[1], ch=p[2], no=p.lineno(1))
 
     def p_command(self, p):
         """command : MOVE
@@ -273,6 +304,7 @@ class ParserClass:
             sys.stderr.write(f'Syntax error at {p.lineno} line\n')
         except Exception:
             sys.stderr.write(f'Syntax error in input!')
+        self.correct = False
 
 
 
