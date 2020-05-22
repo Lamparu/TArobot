@@ -1,4 +1,4 @@
-function QuickSort(vector of int arr, int n)
+function QuickSort(vector of int arr int n)
 	begin
 	short int i set S0;
 	short int j set S0;
@@ -28,6 +28,6 @@ return arr;
 function work()
 	begin
 	vector of int mas set {1, 3, 5, 2, 1};
-	mas set QuickSort(mas, 5);
+	mas set QuickSort(mas 5);
 	end
 return 0;

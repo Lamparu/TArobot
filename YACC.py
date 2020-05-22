@@ -68,6 +68,19 @@ class ParserClass:
         """declaration : type var_list"""
         p[0] = node('declaration', ch=[p[1], p[2]], no=p.lineno(2))
 
+    # def p_dec_error(self, p):
+    #     """declaration : wrongtypes STRLIT index SET """
+    #
+    # def p_wrongtypes(self, p):
+    #     """wrongtypes : SHORT
+    #                     | SHORT INT
+    #                     | INT
+    #                     | BOOL"""
+    #     if len(p) == 2:
+    #         p[0] = node('type', val=p[1], no=p.lineno(1))
+    #     else:
+    #         p[0] = node('type', val=p[1]+' '+p[2], no=p.lineno(1))
+
     def p_assignment(self, p):
         """assignment : variable SET expr
                         | variable SET OPCUBR arr_set CLCUBR
@@ -75,7 +88,7 @@ class ParserClass:
         if len(p) == 4:
             p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
         else:
-            p[0] = node('assignment', val=p[2], ch=[p[1], p[4]], no=p.lineno(1))
+            p[0] = node('assignment array', val=p[2], ch=[p[1], p[4]], no=p.lineno(1))
 
     def p_ass_error(self, p):
         """assignment : variable SET error
@@ -185,7 +198,7 @@ class ParserClass:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = node('vars', ch=[p[1], p[3]], no=p.lineno(1))
+            p[0] = node('var_list', ch=[p[1], p[3]], no=p.lineno(1))
 
     def p_vec_var(self, p):
         """vec_var : vectorof variable"""
@@ -201,20 +214,6 @@ class ParserClass:
             p[0] = node('array', ch=[p[1], p[4]], no=p.lineno(1))
         else:
             p[0] = p[1]
-
-    # def p_arr_start(self, p):
-    #     """arr_start : OPCUBR OPCUBR const_arr CLCUBR COMMA"""
-    #     p[1] = node('bracket', val=p[1], no=p.lineno(1))
-    #     p[2] = node('bracket', val=p[2], no=p.lineno(2))
-    #     p[4] = node('bracket', val=p[4], no=p.lineno(4))
-    #     p[0] = node('array list', ch=[p[1], p[2], p[3], p[4]], no=p.lineno(3))
-    #
-    # def p_arr_end(self, p):
-    #     """arr_end : OPCUBR const_arr CLCUBR CLCUBR"""
-    #     p[1] = node('bracket', val=p[1], no=p.lineno(1))
-    #     p[3] = node('bracket', val=p[3], no=p.lineno(3))
-    #     p[4] = node('bracket', val=p[4], no=p.lineno(4))
-    #     p[0] = node('array list', ch=[p[1], p[2], p[3], p[4]], no=p.lineno(1))
 
     def p_const_arr(self, p):
         """const_arr : const

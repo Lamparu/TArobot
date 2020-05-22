@@ -2,21 +2,40 @@ import sys
 from YACC import ParserClass
 from SyntaxTree import node
 from errors import Error_handler
+from errors import UnexpectedError
+from errors import StartPointError
+from errors import IndexError
+from errors import RedeclarationError
+from errors import ElementDeclarationError
+from errors import ConverseError
+from errors import UndeclaredVariableError
 
 
 class variable:
-    def __init__(self, v_type, v_value):
+    def __init__(self, v_type, v_name, v_value=None):
+        if v_type == 'short int':
+            v_type = 'short'
         self.type = v_type
-        if self.type == 'bool':
-            self.value = v_value
-        elif self.type == 'short' and not isinstance(v_value, int):  # TODO: сделать short int и short как одно
-            self.value = int(v_value[1:])
+        self.name = v_name
+        if v_value is None:
+            self.value = 0
         else:
-            self.value = int(v_value)
+            if self.type == 'bool':
+                self.value = v_value
+            elif self.type == 'short' and not isinstance(self.value, int):
+                self.value = int(v_value[1:])
+            else:
+                self.value = int(v_value)
 
     def __repr__(self):
-        return f'{self.type} {self.value}'
+        return f'{self.type} {self.name} = {self.value}'
 
+
+"""  SIZES:
+    sizeof(int) = 8     
+    sizeof(short) = 2       -128 <= short <= 127
+    sizeof(bool) = 1 
+"""
 
 class TypeConverser:
     def __init__(self):
@@ -29,6 +48,8 @@ class TypeConverser:
             return self.sint_to_bool(var)
         elif vartype == 'int':
             if var.type == 'short':
+                if var.value > 127 or var.value < -127:
+                    raise ConverseError
                 return self.short_to_int(var)
             elif var.type == 'bool':
                 return self.bool_to_int(var)
@@ -74,23 +95,28 @@ class TypeConverser:
 
 
 class interpreter:
-    def __init__(self, code=None):
+    def __init__(self, program=None):
         self.parser = ParserClass()
         self.converse = TypeConverser()
         self.error = Error_handler()
+        self.scope = 0
+        self.symbol_table = [dict()]
         self.er_types = {
             'UnexpectedError': 0,
             'StartPointError': 1,
             'IndexError': 2,
-            'RedeclarationError': 3
+            'RedeclarationError': 3,
+            'ElementDeclarationError': 4,
+            'ConverseError': 5,
+            'UdeclaredVariableError': 6,
         }
         self.tree = None
         self.funcs = None
         self.correct = None
-        self.code = code
+        self.program = program
 
     def interpret(self):
-        self.tree, self.funcs, self.correct = self.parser.parse(self.code)
+        self.tree, self.funcs, self.correct = self.parser.parse(self.program)
         if self.correct:
             if 'work' not in self.funcs.keys():
                 self.error.call(self.er_types['StartPointError'])
@@ -110,7 +136,9 @@ class interpreter:
 
     def interp_node(self, node):  # TODO : EOS, NL
         if node is None:
-            return ''
+            return
+        elif node.type == 'error':
+            self.error.call(self.er_types['UnexpectedError'], node)
         elif node.type == 'program':
             self.interp_node(node.children)
         elif node.type == 'statement list':
@@ -118,15 +146,259 @@ class interpreter:
             self.interp_node(node.children[1])
         #statement
         elif node.type == 'declaration':
+            decl_type = node.child[0]
+            decl_child = node.child[1]
+            if decl_child.type == 'var_list':
+                for child in decl_child.child:
+                    try:
+                        self.declaration(child, decl_type)
+                    except RedeclarationError:
+                        self.error.call(self.er_types['RedeclarationError'], node)
+                    except IndexError:
+                        self.error.call(self.er_types['IndexError'], node)
+            else:
+                try:
+                    self.declaration(decl_child, decl_type)
+                except RedeclarationError:
+                    self.error.call(self.er_types['RedeclarationError'], node)
+                except IndexError:
+                    self.error.call(self.er_types['IndexError'], node)
+
+        elif node.type == 'assignment':
+            var = node.child[0]
+            if var.type == 'variable':
+                if var.value not in self.symbol_table[self.scope].keys():
+                    self.error.call(self.er_types['UdeclaredVariableError'], node)
+                    raise UndeclaredVariableError
+                expr = self.interp_node(node.child[1])
+                self.symbol_table[self.scope][var.value].value = expr
+        elif node.type == 'assignment array':
+            pass  # TODO: assign array
+
+
+
+        elif node.type == 'variable':
+            return self._variable(node)
+        # TODO: arr variable
+        elif node.type == 'digit' or node.type == 'bool':
+            return node.value
+        elif node.type == 'EOS' or node.type == 'bracket':
+            return node.value
+        elif node.type == 'sizeof':
+            return self._sizeof(node)
+        elif node.type == 'index':
+            indexes = []
+            self._index(node, indexes)
+            return indexes
+        elif node.type == 'calculation':
             try:
-                self.declare(node.value.value, node.child)
-            except RedeclarationError:
-                self.error.call(self.er_types['RedeclarationError'], node)
-            except IndexError:
-                self.error.call(self.er_types['IndexError'], node)
+                return self._calculation(node)
+            except ConverseError:
+                self.error.call(self.er_types['ConverseError'], node)
+        elif node.type == 'expression':
+            return self.interp_node(node.child[1])
+
+
+    def _calculation(self, node):
+        fisrt_term = self.interp_node(node.child[0])
+        second_term = self.interp_node(node.child[1])
+        if node.value == 'add':
+            return self._add(fisrt_term, second_term)
+        if node.value == 'sub':
+            return self._sub(fisrt_term, second_term)
+        if node.value == 'and':
+            return self._and(fisrt_term, second_term)
+        if node.value == 'or':
+            return self._or(fisrt_term, second_term)
+        if node.value == 'not or':
+            return self._not_or(fisrt_term, second_term)
+        if node.value == 'not and':
+            return self._not_and(fisrt_term, second_term)
+        elif node.value == 'first smaller' or node.value == 'second larger':
+            return self._first_smaller(fisrt_term, second_term)
+        elif node.value == 'first larger' or node.value == 'second smaller':
+            return self._first_larger(fisrt_term, second_term)
+
+    def _add(self, first, second):
+        if first.type == 'bool':
+            if second.type == 'short':
+                self.converse.converse(first, 'short')
+            else:
+                self.converse.converse(first, 'int')
+        if second.type == 'bool':
+            if first.type == 'short':
+                self.converse.converse(second, 'short')
+            else:
+                self.converse.converse(second, 'int')
+        elif first.type == 'short' and second.type == 'int':
+            self.converse.converse(first, 'int')
+        elif first.type == 'int' and second.type == 'short':
+            self.converse.converse(second, 'int')
+        return variable('int', 'res', first.value + second.value)
+
+    def _sub(self, first, second):
+        if first.type == 'bool':
+            if second.type == 'short':
+                self.converse.converse(first, 'short')
+            else:
+                self.converse.converse(first, 'int')
+        if second.type == 'bool':
+            if first.type == 'short':
+                self.converse.converse(second, 'short')
+            else:
+                self.converse.converse(second, 'int')
+        elif first.type == 'short' and second.type == 'int':
+            self.converse.converse(first, 'int')
+        elif first.type == 'int' and second.type == 'short':
+            self.converse.converse(second, 'int')
+        return variable('int', 'res', first.value - second.value)
+
+    def _first_smaller(self, first, second):
+        if first.type == 'bool':
+            self.converse.converse(first, 'int')
+        if second.type == 'bool':
+            self.converse.converse(second, 'int')
+        if first.value > second.value:
+            return variable('bool', 'res', 'false')
+        elif first.value < second.value:
+            return variable('bool', 'res', 'true')
+        else:
+            return variable('bool', 'res', 'undefined')
+
+    def _first_larger(self, first, second):
+        if first.type == 'bool':
+            self.converse.converse(first, 'int')
+        if second.type == 'bool':
+            self.converse.converse(second, 'int')
+        if first.value > second.value:
+            return variable('bool', 'res', 'true')
+        elif first.value < second.value:
+            return variable('bool', 'res', 'false')
+        else:
+            return variable('bool', 'res', 'undefined')
+
+    def _and(self, first, second):
+        if first.type != 'bool':
+            self.converse.converse(first, 'bool')
+        if second.type != 'bool':
+            self.converse.converse(second, 'bool')
+        if first.value == 'true' and second.value == 'true':
+            return variable('bool', 'res', 'true')
+        elif first.value == 'true' and second.value == 'false':
+            return variable('bool', 'res', 'false')
+        elif first.value == 'true' and second.value == 'undefined':
+            return variable('bool', 'res', 'undefined')
+        elif first.value == 'false' and second.value == 'true':
+            return variable('bool', 'res', 'false')
+        elif first.value == 'false' and second.value == 'false':
+            return variable('bool', 'res', 'false')
+        elif first.value == 'false' and second.value == 'undefined':
+            return variable('bool', 'res', 'undefined')
+        elif first.value == 'undefined' and second.value == 'true':
+            return variable('bool', 'res', 'undefined')
+        elif first.value == 'undefined' and second.value == 'false':
+            return variable('bool', 'res', 'false')
+        elif first.value == 'undefined' and second.value == 'undefined':
+            return variable('bool', 'res', 'undefined')
+
+    def _or(self, first, second):
+        if first.type != 'bool':
+            self.converse.converse(first, 'bool')
+        if second.type != 'bool':
+            self.converse.converse(second, 'bool')
+        if first.value == 'true' or second.value == 'true':
+            return variable('bool', 'res', 'true')
+        elif first.value == 'false' and second.value == 'false':
+            return variable('bool', 'res', 'false')
+        elif first.value == 'false' and second.value == 'undefined':
+            return variable('bool', 'res', 'undefined')
+        elif first.value == 'undefined' and second.value == 'false':
+            return variable('bool', 'res', 'undefined')
+        elif first.value == 'undefined' and second.value == 'undefined':
+            return variable('bool', 'res', 'undefined')
+
+    def _not_or(self, first, second):
+        var = self._or(first, second)
+        if var.value == 'true':
+            var.value = 'false'
+        elif var.value == 'false':
+            var.value = 'true'
+        return var
+
+    def _not_and(self, first, second):
+        var = self._and(first, second)
+        if var.value == 'true':
+            var.value = 'false'
+        elif var.value == 'false':
+            var.value = 'true'
+        return var
 
 
 
 
-    def declare(self, type, child):
+
+
+    def _index(self, node, indexes):
+        if node.child is None:
+            return indexes.append(node.value)
+        else:
+            return self._index(node.child, indexes)
+
+
+    def _variable(self, node):
+        var = node.value
+        if var in self.symbol_table[self.scope].keys():
+            return self.symbol_table[self.scope][var]
+        else:
+            raise UndeclaredVariableError
+
+    def _sizeof(self, node):
+        if node.child.type == 'type':
+            tip = node.child.value
+            return self.sizeof_type(tip)
+        elif node.child.type == 'variable':
+            var = node.child.value
+            if var in self.symbol_table[self.scope].keys():
+                tip = self.symbol_table[self.scope][var].type
+                return self.sizeof_type(tip)
+        else:  # TODO: arr variable
+            pass
+
+
+    def sizeof_type(self, type):
+        if type == 'short' or type == 'short int':
+            return 2
+        elif type == 'int':
+            return 8
+        else:
+            return 1
+
+
+    def declaration(self, type, node):
+        if type.type == 'arr':
+            if node.value in self.symbol_table[self.scope].keys():
+                if node.value in self.symbol_table[self.scope].keys() or node.value in self.funcs:
+                    raise RedeclarationError
+                else:
+                    pass  # TODO : do smth with array declaration
+        else:  # if type.type == 'type'
+            if node.type == 'variable':
+                if node.value in self.symbol_table[self.scope].keys() or node.value in self.funcs:
+                    raise RedeclarationError
+                else:
+                    self.symbol_table[self.scope][node.value] = variable(type.value, node.value)
+            elif node.type == 'arr variable':
+                if type != 'arr':
+                    raise ElementDeclarationError
+            else:  # if node.type == 'assignment'
+                var = node.child[0].value
+                if var in self.symbol_table[self.scope].keys() or node.value in self.funcs:
+                    raise RedeclarationError
+                if node.child[0].type != 'arr variable':
+                    expr = self.interp_node(node.child[1])
+                    self.symbol_table[self.scope][var] = variable(type.value, var, expr)
+                else:
+                    pass  # TODO : array declaration
+
+
 
