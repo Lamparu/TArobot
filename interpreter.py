@@ -9,6 +9,7 @@ from errors import RedeclarationError
 from errors import ElementDeclarationError
 from errors import ConverseError
 from errors import UndeclaredVariableError
+from errors import ArrayDeclarationError
 
 
 class variable:
@@ -29,6 +30,18 @@ class variable:
 
     def __repr__(self):
         return f'{self.type} {self.name} = {self.value}'
+
+class arr_variable:
+    def __init__(self, v_type, v_name, v_scope, v_array=None):
+        if v_type == 'short int':
+            v_type = 'short'
+        self.type = v_type
+        self.name = v_name
+        self.scope = v_scope
+        if v_array is None:
+            self.array = []
+        else:
+            self.array = v_array
 
 
 """  SIZES:
@@ -109,6 +122,7 @@ class interpreter:
             'ElementDeclarationError': 4,
             'ConverseError': 5,
             'UdeclaredVariableError': 6,
+            'ArrayDeclarationError': 7
         }
         self.tree = None
         self.funcs = None
@@ -180,12 +194,17 @@ class interpreter:
         elif node.type == 'variable':
             return self._variable(node)
         # TODO: arr variable
-        elif node.type == 'digit' or node.type == 'bool':
-            return node.value
+        elif node.type == 'digit':
+            if node.value[0] == 's':
+                return variable('short', '', node.vaalue)
+            else:
+                return variable('int', '', node.value)
+        elif node.type == 'bool':
+            return variable('bool', '', node.value)
         elif node.type == 'EOS' or node.type == 'bracket':
             return node.value
         elif node.type == 'sizeof':
-            return self._sizeof(node)
+            return variable('int', '', self._sizeof(node))
         elif node.type == 'index':
             indexes = []
             self._index(node, indexes)
@@ -376,11 +395,43 @@ class interpreter:
 
     def declaration(self, type, node):
         if type.type == 'arr':
-            if node.value in self.symbol_table[self.scope].keys():
+            if node.type == 'variable':
+                raise ArrayDeclarationError
+            arr_scope = self._arr_scope(type, 1)
+            arr_type = self._arr_type(type)
+            if node.type == 'arr variable':
                 if node.value in self.symbol_table[self.scope].keys() or node.value in self.funcs:
                     raise RedeclarationError
-                else:
-                    pass  # TODO : do smth with array declaration
+                index_scope = self._arr_scope(node, 1)
+                if index_scope != arr_scope:
+                    raise ArrayDeclarationError
+                arr_indexes = {}
+                arr_indexes = self.get_indexes(node, arr_indexes, 0)
+                var = arr_variable(arr_type, node.value, arr_indexes)
+                self.symbol_table[self.scope][node.value] = var
+            elif node.type == 'var_list':
+                for ch in node.child:
+                    self.declaration(type, ch)
+            elif node.type == 'assignment':
+                raise ArrayDeclarationError
+            elif node.type == 'assignment array':
+                var_ch = node.child[0]
+                expr_ch = node.child[1]
+                arr_name = var_ch.value
+                if arr_name in self.symbol_table[self.scope].keys() or node.value in self.funcs:
+                        raise RedeclarationError
+                if var_ch.type == 'arr variable':
+                    index_scope = self._arr_scope(var_ch, 1)
+                    if index_scope != arr_scope:
+                        raise ArrayDeclarationError
+                    arr_indexes = {}
+                    arr_idexes = self.get_indexes(var_ch, arr_indexes, 0)
+                    arr_values = self.get_arr_values(expr_ch, arr_type)
+                    # TODO: to check indexes and arrays
+                elif node.type == 'variable':
+
+
+
         else:  # if type.type == 'type'
             if node.type == 'variable':
                 if node.value in self.symbol_table[self.scope].keys() or node.value in self.funcs:
@@ -400,5 +451,66 @@ class interpreter:
                 else:
                     pass  # TODO : array declaration
 
+    def _arr_scope(self, node, i):
+        if node.child is None:
+            return i
+        else:
+            return self._arr_scope(node, i+1)
+
+    def _arr_type(self, node):
+        if node.type == 'type':
+            return node.value
+        else:
+            return self._arr_type(node.child)
+
+    def get_indexes(self, node, indexes, layer):
+        if isinstance(node.child, list):
+            indexes[layer] = self.interp_node(node.child[0]).value
+            return self.get_indexes(node.child[1], indexes, layer+1)
+        else:
+            indexes[layer] = self.interp_node(node.child).value
+            return indexes
+
+    def get_arr_values(self, node, type):
+        arr = []
+        if node.type == 'array item':
+            self.get_arr_const(node, type, arr)
+        elif node.type == 'array':
+            self.get_arr_next(node, type, arr, 0)
+        else:
+            arr.append(self.get_const(node, type))
+        return arr
+
+    def get_arr_next(self, node, type, arr, i):
+        if node.type == 'array':
+            if isinstance(node.child, list):
+                arr[i].append(self.get_arr_next(node.child[0], type, arr, i+1))
+                arr_new = []
+                arr[i+1].append(self.get_arr_const(node.child[1], type, arr_new))
+            else:
+                arr_new = []
+                self.get_arr_const(node.child, type, arr_new)
+
+
+    def get_arr_const(self, node, type, arr):
+        if node.type == 'array item':
+            arr.append(self.get_const(node.child[0], type))
+            arr.append(self.get_arr_const(node.child[1], type, arr))
+        else:
+            return arr.append(self.get_const(node, type))
+
+    def get_const(self, node, type):
+        if node.type == 'bool':
+            if type != 'bool':
+                raise ArrayDeclarationError
+            return node.value
+        elif node.type == 'digit':
+            if node.value[0] == 's' and type == 'int':
+                raise ArrayDeclarationError
+            return node.value
+        elif node.type == 'sizeof':
+            if type == 'bool':
+                raise ArrayDeclarationError
+            return self._sizeof(node)
 
 

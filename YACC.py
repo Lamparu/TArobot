@@ -68,6 +68,15 @@ class ParserClass:
         """declaration : type var_list"""
         p[0] = node('declaration', ch=[p[1], p[2]], no=p.lineno(2))
 
+    def p_var_list(self, p):
+        """var_list : variable
+                    | assignment
+                    | var_list COMMA var_list """
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = node('var_list', ch=[p[1], p[3]], no=p.lineno(1))
+
     # def p_dec_error(self, p):
     #     """declaration : wrongtypes STRLIT index SET """
     #
@@ -83,17 +92,14 @@ class ParserClass:
 
     def p_assignment(self, p):
         """assignment : variable SET expr
-                        | variable SET OPCUBR arr_set CLCUBR
-                        | vec_var SET OPCUBR arr_set CLCUBR"""
+                        | variable SET OPCUBR arr_set CLCUBR"""
         if len(p) == 4:
             p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
         else:
             p[0] = node('assignment array', val=p[2], ch=[p[1], p[4]], no=p.lineno(1))
 
     def p_ass_error(self, p):
-        """assignment : variable SET error
-                        | vec_var SET error
-                         | vec_var"""
+        """assignment : variable SET error"""
         p[0] = node('error', val='Wrong assignment', ch=p[1], no=p.lineno(1))
         sys.stderr.write(f'>>> Wrong assignment\n')
 
@@ -115,6 +121,11 @@ class ParserClass:
         """vectorof : VECTOROF type
                     | VECTOROF vectorof"""
         p[0] = node('arr', val=str(p[1]), ch=p[2], no=p.lineno(1))
+
+    def p_vectorof_error(self, p):
+        """vectorof : VECTOROF type vectorof error"""
+        p[0] = node('error', val='Wrong array assignment', ch=p[1], no=p.lineno(1))
+        sys.stderr.write(f'>>> Wrong assignment\n')
 
     def p_digit(self, p):
         """digit : INTLIT
@@ -191,19 +202,6 @@ class ParserClass:
                 | SIZEOF OPBR variable CLBR"""
         p[0] = node('sizeof', val=p[1], ch=p[3], no=p.lineno(1))
 
-    def p_var_list(self, p):
-        """var_list : variable
-                    | assignment
-                    | var_list COMMA var_list """
-        if len(p) == 2:
-            p[0] = p[1]
-        else:
-            p[0] = node('var_list', ch=[p[1], p[3]], no=p.lineno(1))
-
-    def p_vec_var(self, p):
-        """vec_var : vectorof variable"""
-        p[0] = node('arr', val=p[1], ch=p[2], no=p.lineno(1))
-
     def p_arr_set(self, p):
         """arr_set : OPCUBR const_arr CLCUBR
                     | arr_set COMMA OPCUBR const_arr CLCUBR
@@ -221,7 +219,7 @@ class ParserClass:
         if len(p) == 2:
             p[0] = p[1]
         elif len(p) == 4:
-            p[0] = node('array', ch=[p[1], p[3]], no=p.lineno(1))
+            p[0] = node('array item', ch=[p[1], p[3]], no=p.lineno(1))
 
     def p_variable(self, p):
         """variable : STRLIT
@@ -232,14 +230,12 @@ class ParserClass:
             p[0] = node('arr variable', val=p[1], ch=p[2], no=p.lineno(1))
 
     def p_index(self, p):
-        """index : OPSQBR digit CLSQBR
-                | OPSQBR variable CLSQBR
-                | OPSQBR digit CLSQBR index
-                | OPSQBR variable CLSQBR index"""
+        """index : OPSQBR expr CLSQBR
+                | OPSQBR expr CLSQBR index"""
         if len(p) == 4:
-            p[0] = node('index', val=p[2], no=p.lineno(2))
+            p[0] = node('index', ch=p[2], no=p.lineno(2))
         else:
-            p[0] = node('index', val=p[2], ch=p[4], no=p.lineno(2))
+            p[0] = node('index', ch=[p[2], p[4]], no=p.lineno(2))
 
     def p_while(self, p):
         """while : DO NL stat_group WHILE expr ENDSTR NL"""
