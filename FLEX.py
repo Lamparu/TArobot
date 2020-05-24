@@ -132,7 +132,14 @@ class LexerClass:
         return t
 
 
-data1 = '''variable;
+data1 = '''function work()
+begin
+int operand set 2;
+if operand first larger 1 then
+    operand set true;
+else;
+end
+return 0;
 '''
 if __name__ == '__main__':
     f = open('algosort.txt')

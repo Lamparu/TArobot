@@ -13,7 +13,9 @@ class Error_handler:
             'RedeclarationError',
             'ElementDeclarationError',
             'ConverseError',
-            'UndeclaredVariableError'
+            'UndeclaredVariableError',
+            'ArrayDeclarationError',
+            'NotArrayError'
         ]
 
     def call(self, err_type, node=None):
@@ -35,6 +37,10 @@ class Error_handler:
             sys.stderr.write(f'Can\'t converse types at line {self.node.value.lineno}')
         elif self.type == 6:
             sys.stderr.write(f'Using undeclared variable "{self.node.value.value}" at line {self.node.value.lineno}')
+        elif self.type == 7:
+            sys.stderr.write(f'Wrong declaration of array "{self.node.value.value}" at line {self.node.value.lineno}')
+        elif self.type == 8:
+            sys.stderr.write(f'Trying to get index from not array variable "{self.node.value.value}" at line {self.node.value.lineno}')
 
 
 class UnexpectedError(Exception):
@@ -62,4 +68,12 @@ class ConverseError(Exception):
 
 
 class UndeclaredVariableError(Exception):
+    pass
+
+
+class ArrayDeclarationError(Exception):
+    pass
+
+
+class NotArrayError(Exception):
     pass

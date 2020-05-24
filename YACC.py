@@ -203,11 +203,16 @@ class ParserClass:
         p[0] = node('sizeof', val=p[1], ch=p[3], no=p.lineno(1))
 
     def p_arr_set(self, p):
-        """arr_set : OPCUBR const_arr CLCUBR
+        """arr_set : OPCUBR arr_set CLCUBR
+                    | OPCUBR const_arr CLCUBR
                     | arr_set COMMA OPCUBR const_arr CLCUBR
+                    | arr_set COMMA arr_set
                     | const_arr"""
         if len(p) == 4:
-            p[0] = node('array', ch=p[2], no=p.lineno(2))
+            if p[2] == ',':
+                p[0] = node('array', ch=[p[1], p[3]], no=p.lineno(1))
+            else:
+                p[0] = node('array', ch=p[2], no=p.lineno(2))
         elif len(p) == 6:
             p[0] = node('array', ch=[p[1], p[4]], no=p.lineno(1))
         else:
