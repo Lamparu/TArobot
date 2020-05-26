@@ -15,7 +15,10 @@ class Error_handler:
             'ConverseError',
             'UndeclaredVariableError',
             'ArrayDeclarationError',
-            'NotArrayError'
+            'NotArrayError',
+            'UndeclaredFunctionError',
+            'CallWorkError',
+            'WrongParameterError',
         ]
 
     def call(self, err_type, node=None):
@@ -41,6 +44,12 @@ class Error_handler:
             sys.stderr.write(f'Wrong declaration of array "{self.node.value.value}" at line {self.node.value.lineno}')
         elif self.type == 8:
             sys.stderr.write(f'Trying to get index from not array variable "{self.node.value.value}" at line {self.node.value.lineno}')
+        elif self.type == 9:
+            sys.stderr.write(f'Calling undeclared function "{self.node.value.value}" at line {self.node.value.lineno}')
+        elif self.type == 10:
+            sys.stderr.write(f'Calling WORK function at line {self.node.value.lineno}')
+        elif self.type == 11:
+            sys.stderr.write(f'Wrong parameters in function "{self.node.value.value}" at line {self.node.value.lineno}')
 
 
 class UnexpectedError(Exception):
@@ -76,4 +85,16 @@ class ArrayDeclarationError(Exception):
 
 
 class NotArrayError(Exception):
+    pass
+
+
+class UndeclaredFunctionError(Exception):
+    pass
+
+
+class CallWorkError(Exception):
+    pass
+
+
+class WrongParameterError(Exception):
     pass

@@ -68,11 +68,11 @@ class LexerClass:
         return t
 
     def t_INTLIT(self, t):
-        r'[0-9]+'
+        r'\-?[0-9]+'
         return t
 
     def t_SHORTLIT(self, t):
-        r's[0-9]+'
+        r'\-?s[0-9]+'
         return t
 
     def t_STRLIT(self, t):
@@ -132,12 +132,14 @@ class LexerClass:
         return t
 
 
-data1 = '''function work()
+data1 = '''function addition(int a)
+a set -s1;
+return 1;
+
+function work()
 begin
-int operand set 2;
-if operand first larger 1 then
-    operand set true;
-else;
+vector of vector of int mass[2][2] set { {1, 2}, {3, 4} };
+addition(mass[0][0]);
 end
 return 0;
 '''

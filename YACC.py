@@ -175,7 +175,7 @@ class ParserClass:
         p[0] = node('expression', ch=[p[1], p[2], p[3]], no=p.lineno(2))
 
     def p_callfunc(self, p):
-        """callfunc : STRLIT OPBR var_arr CLBR"""  # TODO: проверка на наличие функции
+        """callfunc : STRLIT OPBR var_arr CLBR"""
         p[0] = node('call_func', val=p[1], ch=p[3], no=p.lineno(1))
 
     def p_var_arr(self, p):
@@ -260,12 +260,17 @@ class ParserClass:
 
     def p_if_error(self, p):
         """if : IF expr error"""
-        p[0] = node('error', val='Wrong if declaration', ch=p[2], no=p.lineno(1))
+        p[0] = node('error', val='Wrong if declaration', no=p.lineno(1))
 
     def p_function(self, p):
         """function : FUNCTION STRLIT OPBR typearr CLBR NL stat_group RETURN expr ENDSTR NL"""
-        p[0] = node('function', val=str(p[2]), ch={'parameters': p[4], 'body': p[7], 'return': p[9]}, no=p.lineno(1))
-        self.func[p[2]] = p[0]
+        if p[2] in self.func.keys():
+            p[0] = node('error', val='Function declared earlier',  no=p.lineno(1))
+            sys.stderr.write(f'>>> Redeclared function\n')
+        else:
+            p[0] = node('function', val=str(p[2]), ch={'parameters': p[4], 'body': p[7], 'return': p[9]},
+                        no=p.lineno(1))
+            self.func[p[2]] = p[0]
 
     def p_func_error(self, p):
         """function : FUNCTION error"""
@@ -281,11 +286,11 @@ class ParserClass:
         elif len(p) == 3:
             p[0] = node('param arr', ch=[p[1], p[2]], no=p.lineno(1))
         else:
-            p[0] = node('param', val='none')
+            p[0] = node('param_none', val='none')
 
     def p_typevar(self, p):
         """typevar : type variable"""
-        p[0] = node('param', val=p[1], ch=p[2], no=p.lineno(1))
+        p[0] = node('param', ch=[p[1], p[2]], no=p.lineno(1))
 
     def p_command(self, p):
         """command : MOVE
