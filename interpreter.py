@@ -128,7 +128,7 @@ class TypeConverser:
 
 
 class interpreter:
-    def __init__(self, program=None):
+    def __init__(self, program=None, robot=None):
         self.parser = ParserClass()
         self.converse = TypeConverser()
         self.error = Error_handler()
@@ -146,12 +146,15 @@ class interpreter:
             'NotArrayError': 8,
             'UndeclaredFunctionError': 9,
             'CallWorkError': 10,
-            'WrongParameterError': 11
+            'WrongParameterError': 11,
+            'RobotError': 12
         }
         self.tree = None
         self.funcs = None
         self.correct = None
         self.program = program
+        self.robot = robot
+        self.exit = False
 
     def interpret(self):
         self.tree, self.funcs, self.correct = self.parser.parse(self.program)
@@ -228,10 +231,13 @@ class interpreter:
             return node.value
         elif node.type == 'sizeof':
             return variable('int', '', self._sizeof(node))
-        elif node.type == 'index':
-            indexes = []
-            self._index(node, indexes)
-            return indexes
+        # elif node.type == 'index':
+        #     indexes = []
+        #     try:
+        #         self._index(node, indexes)
+        #     except IndexError:
+        #         self.error.call(self.er_types['IndexError'], node)
+        #     return indexes
         elif node.type == 'calculation':
             try:
                 return self._calculation(node)
@@ -280,7 +286,24 @@ class interpreter:
             except RecursionError:
                 raise RecursionError from None
 
+        elif node.type == 'command':
+            if self.robot is None:
+                self.error.call(self.er_types['RobotError'], node)
+                self.correct = False
+                return 0
+            if node.value == 'lms':
+                return variable('int', 'lms', self.robot.lms())
+            else:
+                self.robot.move(node.value)
+                if self.robot.exit():
+                    self.exit = True
+                    return 1
+        else:
+            print('Not all nodes checked')
 
+
+
+    # CALCULATION
     def _calculation(self, node):
         first_term = copy.deepcopy(self.interp_node(node.child[0]))
         second_term = copy.deepcopy(self.interp_node(node.child[1]))
@@ -417,11 +440,11 @@ class interpreter:
             var.value = 'true'
         return var
 
-    def _index(self, node, indexes):
-        if node.child is None:
-            return indexes.append(node.value)
-        else:
-            return self._index(node.child, indexes)
+    # def _index(self, node, indexes):
+    #     if node.child is None:
+    #         return indexes.append(node.value)
+    #     else:
+    #         return self._index(node.child, indexes)
 
     def _variable(self, node):
         var = node.value
@@ -437,11 +460,11 @@ class interpreter:
         if isinstance(var, variable):
             raise NotArrayError
         i = self.get_el_index(node)
-        val = var.array[i]
-        return self.symbol_table[self.scope][node.value].array[i]
-        # type_var = var.type
-        # new_var = variable(type_var, '', val)
-        # return new_var
+        # val = var.array[i]
+        # return self.symbol_table[self.scope][node.value].array[i]
+        type_var = var.type
+        new_var = variable(type_var, node.value+str(i), self.symbol_table[self.scope][node.value].array[i])
+        return new_var
 
     def get_el_index(self, var):
         ind = []
@@ -468,26 +491,35 @@ class interpreter:
 
     def get_var_indexes(self, node, ind):
         if isinstance(node.child, list) and len(node.child) > 0:
-            ind.append(self.interp_node(node.child[0]).value)
+            index = self.interp_node(node.child[0])
+            if isinstance(index, arr_variable):
+                raise IndexError
+            index = copy.deepcopy(self.converse.converse(index, 'int'))
+            if index.value < 0:
+                raise IndexError
+            ind.append(index.value)
             ind = self.get_var_indexes(node.child[1], ind)
         elif node.type != 'index' and node.type != 'arr variable':
-            ind.append(self.interp_node(node).value)
+            index = self.interp_node(node)
+            if isinstance(index, arr_variable):
+                raise IndexError
+            index = copy.deepcopy(self.converse.converse(index, 'int'))
+            if index.value < 0:
+                raise IndexError
+            ind.append(index.value)
         else:
             ind = self.get_var_indexes(node.child, ind)
         return ind
-
 
     def _sizeof(self, node):
         if node.child.type == 'type':
             tip = node.child.value
             return self.sizeof_type(tip)
-        elif node.child.type == 'variable':
-            var = node.child.value
-            if var in self.symbol_table[self.scope].keys():
-                tip = self.symbol_table[self.scope][var].type
-                return self.sizeof_type(tip)
-        else:  # TODO: arr variable
-            pass
+        else:
+            var = self.interp_node(node.child)
+            if isinstance(var, arr_variable):
+                raise WrongParameterError
+            return self.sizeof_type(var.type)
 
     def sizeof_type(self, type):
         if type == 'short' or type == 'short int':
@@ -501,7 +533,7 @@ class interpreter:
         if type.type == 'arr':
             if node.type == 'variable':
                 raise ArrayDeclarationError
-            arr_scope = self._arr_scope(type, 1)
+            arr_scope = self._arr_scope(type, 1)  # counting vector of
             arr_type = self._arr_type(type)
             if node.type == 'arr variable':
                 if node.value in self.symbol_table[self.scope].keys() or node.value in self.funcs:
@@ -588,10 +620,22 @@ class interpreter:
 
     def get_indexes(self, node, indexes, layer):
         if isinstance(node.child, list):
-            indexes[layer] = self.interp_node(node.child[0]).value
+            var = self.interp_node(node.child[0])
+            if isinstance(var, arr_variable):
+                raise IndexError
+            var = copy.deepcopy(self.converse.converse(var, 'int'))
+            if var.value < 0:
+                raise IndexError
+            indexes[layer] = var.value
             return self.get_indexes(node.child[1], indexes, layer + 1)
         else:
-            indexes[layer] = self.interp_node(node.child).value
+            var = self.interp_node(node.child)
+            if isinstance(var, arr_variable):
+                raise IndexError
+            var = copy.deepcopy(self.converse.converse(var, 'int'))
+            if var.value < 0:
+                raise IndexError
+            indexes[layer] = var.value
             return indexes
 
     def get_arr_values(self, node, type, indexes=None):
@@ -723,18 +767,55 @@ class interpreter:
             raise CallWorkError
         param = node.child
         input_param = []
+        change_value = []
         try:
             while param is not None:
                 if param.type == 'func_param':
                     if param.value == 'none':
                         input_param = []
                     else:
+                        # if param.child[1].type == 'arr variable':
+                        #     if param.child[1].value not in self.symbol_table[self.scope].keys():
+                        #         raise UndeclaredVariableError
+                        #     var = self.symbol_table[self.scope][param.child[1].value]
+                        #     if isinstance(var, variable):
+                        #         raise NotArrayError
+                        #     index = self.get_el_index(param.child[1])
+                        #     val = var.array[index]
+                        #     arr_var = variable(self.symbol_table[self.scope][param.child[1].value].type,
+                        #                        param.child[1].value+str(index), val)
+                        #     input_param.append(arr_var)
+                        # else:
+                        #     input_param.append(self.interp_node(param.child[1]))
+                        # p = self.interp_node(param.child[1])
+                        # input_param.append(p)
                         input_param.append(self.interp_node(param.child[1]))
+                        if param.child[1].type == 'arr variable':
+                            change_value.append(len(input_param)-1)
                         param = param.child[0]
                 else:
+                    # if param.type == 'arr variable':
+                    #     if param.value not in self.symbol_table[self.scope].keys():
+                    #         raise UndeclaredVariableError
+                    #     var = self.symbol_table[self.scope][param.value]
+                    #     if isinstance(var, variable):
+                    #         raise NotArrayError
+                    #     index = self.get_el_index(param)
+                    #     val = var.array[index]
+                    #     arr_var = variable(self.symbol_table[self.scope][param.value].type,
+                    #                        param.value + str(index), val)
+                    #     input_param.append(arr_var)
+                    # else:
+                    #     input_param.append(self.interp_node(param))
+                    # p = self.interp_node(param)
+                    # input_param.append(p)
                     input_param.append(self.interp_node(param))
+                    if param.type == 'arr variable':
+                        change_value.append(len(input_param)-1)
                     break
             input_param.reverse()
+            for i in range(len(change_value)):
+                change_value[i] = -change_value[i] - 1
         except NotArrayError:
             self.error.call(self.er_types['NotArrayError'], node)
         except IndexError:
@@ -754,6 +835,23 @@ class interpreter:
         result = copy.deepcopy(self.interp_node(self.funcs[name].child['return']))
         self.symbol_table.pop()
         self.scope -= 1
+        for i in range(len(input_param)):
+            name = input_param[i].name
+            input_param[i] = copy.deepcopy(func_param[i])
+            input_param[i].name = name
+            # self.symbol_table[self.scope][input_param[i].name] = copy.deepcopy(func_param[i])
+            # self.symbol_table[self.scope][input_param[i].name].name = input_param[i].name
+        for p in change_value:
+            par = input_param[p]
+            arr_type = self.symbol_table[self.scope][par.name[:-1]].type
+            if par.type != arr_type:
+                par = self.converse.converse(par, arr_type)
+            self.symbol_table[self.scope][par.name[:-1]].array[int(par.name[-1])] = str(par.value)
+            input_param[p] = None
+            func_param[p] = None
+            for var in input_param:
+                if var is not None:
+                    self.symbol_table[self.scope][var.name] = var
         return result
 
 
@@ -767,7 +865,7 @@ class interpreter:
                 param.append(self.interp_node(node.child[1]))
             elif node.type == 'param':
                 param.append(self.combine_param(node))
-            if node.child[0].type == 'param':
+            if len(node.child) == 0 or node.child[0].type == 'param':
                 break
             node = node.child[0]
         #param.reverse()
@@ -813,9 +911,34 @@ class interpreter:
         else:
             raise WrongParameterError
 
+    def set_param1(self, input, func):
+        #input = copy.deepcopy(self.converse.converse(input, func.type))
+        if input.type == 'int' and input.name == "" and func.type == 'short':
+            input = self.converse.converse(input, 'short')
+        if input.type != func.type:
+            raise WrongParameterError
+        if isinstance(input, arr_variable) and isinstance(func, arr_variable):
+            func = input
+        elif isinstance(input, variable) and isinstance(func, variable):
+            func = input
+        else:
+            raise WrongParameterError
+
 
 
 if __name__ == '__main__':
-    prog = data1
+    # f = open('algosort.txt')
+    f = open('factorial.txt')
+    data = f.read().lower()
+    f.close()
+    prog = data
     i = interpreter(program=prog)
     res = i.interpret()
+    if res:
+        print(i.symbol_table)
+    else:
+        print('===SOMETHING WRONG===')
+    if i.exit:
+        print('Robot found exit!')
+    else:
+        print('Robot can\'t find exit')

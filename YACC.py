@@ -111,7 +111,7 @@ class ParserClass:
         if len(p) == 2:
             p[0] = node('type', val=p[1], no=p.lineno(1))
         else:
-            p[0] = node('type', val=p[1]+' '+p[2], no=p.lineno(1))
+            p[0] = node('type', val='short', no=p.lineno(1))
 
     def p_type_vec(self, p):
         """type : vectorof"""
@@ -302,7 +302,7 @@ class ParserClass:
         if len(p) == 2:
             p[0] = node('command', val=p[1], no=p.lineno(1))
         else:
-            p[0] = node('command', val=str(p[1])+' '+str(p[2]))
+            p[0] = node('command', val=p[2], no=p.lineno(1))
 
     def p_error(self, p):
         try:
@@ -314,9 +314,10 @@ class ParserClass:
 
 
 if __name__ == '__main__':
-    f = open('algosort.txt')
+    # f = open('algosort.txt')
+    f = open('factorial.txt')
     data = f.read().lower()
     f.close()
     parser = ParserClass()
-    tree = parser.parser.parse(data1, debug=True)
+    tree = parser.parser.parse(data, debug=True)
     tree.print()

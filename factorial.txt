@@ -1,0 +1,32 @@
+function mul(int r int i)
+begin
+int res set 0;
+int j set i;
+do
+    begin
+    res set res add r;
+    j set j sub 1;
+    end
+while j first larger 0;
+end
+return res;
+
+function factorial(int n)
+begin
+int r set 1;
+int i set 2;
+do
+    begin
+    r set mul(r i);
+    i set i add 1;
+    end
+while i first smaller (n add 1);
+end
+return r;
+
+function work()
+begin
+int n set 13;
+n set factorial(n);
+end
+return 0;

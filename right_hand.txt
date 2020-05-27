@@ -1,0 +1,10 @@
+function work()
+    begin
+    short int side set 1;
+    if lms first smaller 0 then
+        do
+            move right
+        while lms first smaller 0;
+    else;
+    end
+return 0;
