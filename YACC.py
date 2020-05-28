@@ -33,7 +33,7 @@ class ParserClass:
         if p[1] == 'begin':
             p[1] = node('border', val=p[1], no=p.lineno(1))
             p[4] = node('border', val=p[4], no=p.lineno(1))
-            p[0] = node('group_stat', ch=[p[1], p[3], p[4]], no=p.lineno(1))
+            p[0] = node('group_stat', ch=[p[1], p[3], p[4]], no=p.lineno(2)+1)
         else:
             p[0] = p[1]
 
@@ -42,7 +42,7 @@ class ParserClass:
                     | statement
                     | NL"""
         if len(p) == 3:
-            p[0] = node('statement list', ch=[p[1], p[2]], no=p.lineno(2))
+            p[0] = node('statement list', ch=[p[1], p[2]], no=p.lineno(1))
         else:
             if p[0] != '\n':
                 p[0] = p[1]
@@ -66,7 +66,7 @@ class ParserClass:
 
     def p_declaration(self, p):
         """declaration : type var_list"""
-        p[0] = node('declaration', ch=[p[1], p[2]], no=p.lineno(2))
+        p[0] = node('declaration', ch=[p[1], p[2]], no=p.lineno(1))
 
     def p_var_list(self, p):
         """var_list : variable
@@ -75,7 +75,7 @@ class ParserClass:
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = node('var_list', ch=[p[1], p[3]], no=p.lineno(1))
+            p[0] = node('var_list', ch=[p[1], p[3]], no=p.lineno(2))
 
     # def p_dec_error(self, p):
     #     """declaration : wrongtypes STRLIT index SET """
@@ -91,16 +91,20 @@ class ParserClass:
     #         p[0] = node('type', val=p[1]+' '+p[2], no=p.lineno(1))
 
     def p_assignment(self, p):
-        """assignment : variable SET expr
-                        | variable SET OPCUBR arr_set CLCUBR"""
+        """assignment : variable SET expr"""
+                       # | variable SET arr_set """
         if len(p) == 4:
-            p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
+            p[0] = node('assignment', val=p[2], ch=[p[1], p[3]], no=p.lineno(2))
         else:
-            p[0] = node('assignment array', val=p[2], ch=[p[1], p[4]], no=p.lineno(1))
+            p[0] = node('assignment array', val=p[2], ch=[p[1], p[4]], no=p.lineno(2))
+
+    def p_ass_array(self, p):
+        """assignment : variable SET arr_set"""
+        p[0] = node('assignment array', val=p[2], ch=[p[1], p[3]], no=p.lineno(2))
 
     def p_ass_error(self, p):
         """assignment : variable SET error"""
-        p[0] = node('error', val='Wrong assignment', ch=p[1], no=p.lineno(1))
+        p[0] = node('error', val='Wrong assignment', ch=p[1], no=p.lineno(2))
         sys.stderr.write(f'>>> Wrong assignment\n')
 
     def p_type(self, p):
@@ -158,21 +162,21 @@ class ParserClass:
                 | expr AND expr
                 | expr NOT AND expr"""
         if len(p) == 4:
-            p[0] = node('calculation', val=p[2], ch=[p[1], p[3]], no=p.lineno(1))
+            p[0] = node('calculation', val=p[2], ch=[p[1], p[3]], no=p.lineno(2))
         else:
-            p[0] = node('calculation', val=p[2]+' '+p[3], ch=[p[1], p[4]], no=p.lineno(1))
+            p[0] = node('calculation', val=p[2]+' '+p[3], ch=[p[1], p[4]], no=p.lineno(2))
 
     def p_mexp_error(self, p):
         """math_expr : expr SMALLER expr
                     | expr LARGER expr"""
-        p[0] = node('error', val='Comparison error', ch=[p[1], p[3]], no=p.lineno(1))
+        p[0] = node('error', val='Comparison error', ch=[p[1], p[3]], no=p.lineno(2))
         sys.stderr.write(f'>>> Wrong comparison\n')
 
     def p_expr_br(self, p):
         """expr : OPBR expr CLBR"""
         p[1] = node('bracket', val=p[1], no=p.lineno(1))
         p[3] = node('bracket', val=p[3], no=p.lineno(3))
-        p[0] = node('expression', ch=[p[1], p[2], p[3]], no=p.lineno(2))
+        p[0] = node('expression', ch=[p[1], p[2], p[3]], no=p.lineno(1))
 
     def p_callfunc(self, p):
         """callfunc : STRLIT OPBR var_arr CLBR"""
@@ -189,7 +193,7 @@ class ParserClass:
         elif len(p) == 3:
             p[0] = node('func_param', ch=[p[1], p[2]], no=p.lineno(1))
         else:
-            p[0] = node('func_param', val='none')
+            p[0] = node('func_param', val='none', no=p.lineno(1))
 
     def p_const(self, p):
         """const : digit
@@ -205,18 +209,18 @@ class ParserClass:
     def p_arr_set(self, p):
         """arr_set : OPCUBR arr_set CLCUBR
                     | OPCUBR const_arr CLCUBR
-                    | arr_set COMMA OPCUBR const_arr CLCUBR
-                    | arr_set COMMA arr_set
-                    | const_arr"""
+                    | arr_set COMMA arr_set """
+        #  | arr_set COMMA OPCUBR const_arr CLCUBR
+        #  | const_arr
         if len(p) == 4:
             if p[2] == ',':
-                p[0] = node('array', ch=[p[1], p[3]], no=p.lineno(1))
+                p[0] = node('array_comma', ch=[p[1], p[3]], no=p.lineno(2))
             else:
-                p[0] = node('array', ch=p[2], no=p.lineno(2))
-        elif len(p) == 6:
-            p[0] = node('array', ch=[p[1], p[4]], no=p.lineno(1))
-        else:
-            p[0] = p[1]
+                p[0] = node('array_lvl', ch=p[2], no=p.lineno(1))
+        # elif len(p) == 6:
+        #     p[0] = node('array', ch=[p[1], p[4]], no=p.lineno(2))
+        # else:
+        #     p[0] = p[1]
 
     def p_const_arr(self, p):
         """const_arr : const
@@ -224,7 +228,7 @@ class ParserClass:
         if len(p) == 2:
             p[0] = p[1]
         elif len(p) == 4:
-            p[0] = node('array item', ch=[p[1], p[3]], no=p.lineno(1))
+            p[0] = node('array item', ch=[p[1], p[3]], no=p.lineno(2))
 
     def p_variable(self, p):
         """variable : STRLIT
@@ -238,13 +242,13 @@ class ParserClass:
         """index : OPSQBR expr CLSQBR
                 | OPSQBR expr CLSQBR index"""
         if len(p) == 4:
-            p[0] = node('index', ch=p[2], no=p.lineno(2))
+            p[0] = node('index', ch=p[2], no=p.lineno(1))
         else:
-            p[0] = node('index', ch=[p[2], p[4]], no=p.lineno(2))
+            p[0] = node('index', ch=[p[2], p[4]], no=p.lineno(1))
 
     def p_while(self, p):
         """while : DO NL stat_group WHILE expr ENDSTR NL"""
-        p[0] = node('do_while', ch={'body': p[3], 'condition': p[5]}, no=p.lineno(2))
+        p[0] = node('do_while', ch={'body': p[3], 'condition': p[5]}, no=p.lineno(1))
 
     # def p_while_error(self, p):
     #     """while : DO error"""
@@ -254,9 +258,9 @@ class ParserClass:
         """if : IF expr THEN NL stat_group ELSE NL stat_group
                 | IF expr THEN NL stat_group ELSE ENDSTR NL"""
         if p[7] != ';':
-            p[0] = node('if_th_el', ch={'condition': p[2], 'body_1': p[5], 'body_2': p[8]}, no=p.lineno(2))
+            p[0] = node('if_th_el', ch={'condition': p[2], 'body_1': p[5], 'body_2': p[8]}, no=p.lineno(1))
         else:
-            p[0] = node('if_then', ch={'condition': p[2], 'body': p[5]}, no=p.lineno(2))
+            p[0] = node('if_then', ch={'condition': p[2], 'body': p[5]}, no=p.lineno(1))
 
     def p_if_error(self, p):
         """if : IF expr error"""
@@ -319,5 +323,5 @@ if __name__ == '__main__':
     data = f.read().lower()
     f.close()
     parser = ParserClass()
-    tree = parser.parser.parse(data, debug=True)
+    tree = parser.parser.parse(data1, debug=True)
     tree.print()

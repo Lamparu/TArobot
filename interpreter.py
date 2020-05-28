@@ -4,6 +4,8 @@ from YACC import ParserClass
 from FLEX import data1
 from SyntaxTree import node
 from errors import *
+
+
 # from errors import Error_handler
 # from errors import UnexpectedError
 # from errors import StartPointError
@@ -32,7 +34,7 @@ class variable:
             elif self.type == 'short' and isinstance(v_value, str):
                 if v_value[0] == 's':
                     self.value = int(v_value[1:])
-                else: # if var = -s1
+                else:  # if var = -s1
                     v_value = v_value[0] + v_value[2:]
                     self.value = int(v_value)
             else:
@@ -92,39 +94,100 @@ class TypeConverser:
                 return self.bool_to_short(var)
 
     def sint_to_bool(self, var):
-        if var.value > 0:
-            return variable('bool', '', 'true')
-        elif var.value < 0:
-            return variable('bool', '', 'false')
+        if isinstance(var, variable):
+            if var.value > 0:
+                return variable('bool', '', 'true')
+            elif var.value < 0:
+                return variable('bool', '', 'false')
+            else:
+                return variable('bool', '', 'undefined')
         else:
-            return variable('bool', '', 'undefined')
+            arr = []
+            for i in range(len(var.array)):
+                if var.array[i][0] == 's':
+                    if int(var.array[i][1:]) > 0:
+                        arr[i] = 'true'
+                    else:
+                        arr[i] = 'undefined'
+                elif var.array[i][0] == '-' and var.array[i][1] == 's':
+                    if int(var.array[i][2:]) > 0:
+                        arr[i] = 'false'
+                    else:
+                        arr[i] = 'undefined'
+                else:
+                    if int(var.array[i]) > 0:
+                        arr[i] = 'true'
+                    elif int(var.array[i]) < 0:
+                        arr[i] = 'false'
+                    else:
+                        arr[i] = 'undefined'
+            return arr_variable('bool', '', var.scope, arr)
 
     def int_to_short(self, var):
-        if var.value > 127 or var.value < -128:
-            raise ConverseError
-        return variable('short', '', var.value)
+        if isinstance(var, variable):
+            if var.value > 127 or var.value < -128:
+                raise ConverseError
+            return variable('short', '', var.value)
+        else:
+            for i in range(len(var.array)):
+                if int(var.array[i]) > 127 or int(var.array[i]) < -128:
+                    raise ConverseError
+            return arr_variable('short', '', var.scope, var.array)
 
     def short_to_int(self, var):
-        if isinstance(var.value, int):
-            return variable('int', '', var.value)
+        if isinstance(var, variable):
+            if isinstance(var.value, int):
+                return variable('int', '', var.value)
+            else:
+                return variable('int', '', var.value[1:])
         else:
-            return variable('int', '', var.value[1:])
+            arr = []
+            for i in range(len(var.array)):
+                if var.array[i][0] == 's':
+                    arr[i] = var.array[i][1:]
+                elif var.array[i][0] == '-' and var.array[i][1] == 's':
+                    arr[i] = '-' + var.array[i][2:]
+                else:
+                    arr[i] = var.array[i]
+            return arr_variable('int', '', var.scope, arr)
 
     def bool_to_int(self, var):
-        if var.value == 'true':
-            return variable('int', '', 1)
-        elif var.value == 'false':
-            return variable('int', '', -1)
+        if isinstance(var, variable):
+            if var.value == 'true':
+                return variable('int', '', 1)
+            elif var.value == 'false':
+                return variable('int', '', -1)
+            else:
+                return variable('int', '', 0)
         else:
-            return variable('int', '', 0)
+            arr = []
+            for i in range(len(var.array)):
+                if var.array[i] == 'true':
+                    arr[i] = '1'
+                elif var.array[i] == 'false':
+                    arr[i] = '-1'
+                else:
+                    arr[i] = '0'
+            return arr_variable('int', '', var.scope, arr)
 
     def bool_to_short(self, var):
-        if var.value == 'true':
-            return variable('short', '', 1)
-        elif var.value == 'false':
-            return variable('short', '', -1)
+        if isinstance(var, variable):
+            if var.value == 'true':
+                return variable('short', '', 1)
+            elif var.value == 'false':
+                return variable('short', '', -1)
+            else:
+                return variable('short', '', 0)
         else:
-            return variable('short', '', 0)
+            arr = []
+            for i in range(len(var.array)):
+                if var.array[i] == 'true':
+                    arr[i] = '1'
+                elif var.array[i] == 'false':
+                    arr[i] = '-1'
+                else:
+                    arr[i] = '0'
+            return arr_variable('short', '', var.scope, arr)
 
 
 class interpreter:
@@ -147,7 +210,8 @@ class interpreter:
             'UndeclaredFunctionError': 9,
             'CallWorkError': 10,
             'WrongParameterError': 11,
-            'RobotError': 12
+            'RobotError': 12,
+            'NameError': 13
         }
         self.tree = None
         self.funcs = None
@@ -175,9 +239,13 @@ class interpreter:
         else:
             sys.stderr.write(f'Incorrect input file\n')
 
-    def interp_node(self, node):  # TODO : EOS, NL
+    def interp_node(self, node):
         if node is None:
             return
+        elif node.type == 'NL':
+            pass
+        elif node.type == 'EOS':
+            pass
         elif node.type == 'error':
             self.error.call(self.er_types['UnexpectedError'], node)
         elif node.type == 'program':
@@ -201,6 +269,11 @@ class interpreter:
                         self.error.call(self.er_types['IndexError'], node)
                     except ConverseError:
                         self.error.call(self.er_types['ConverseError'], node)
+                    except ArrayDeclarationError:
+                        self.error.call(self.er_types['ArrayDeclarationError'], node)
+                    except ElementDeclarationError:
+                        self.error.call(self.er_types['ElementDeclarationError'], node)
+
             else:
                 try:
                     self.declaration(decl_type, decl_child)
@@ -210,12 +283,16 @@ class interpreter:
                     self.error.call(self.er_types['IndexError'], node)
                 except ConverseError:
                     self.error.call(self.er_types['ConverseError'], node)
+                except ArrayDeclarationError:
+                    self.error.call(self.er_types['ArrayDeclarationError'], node)
+                except ElementDeclarationError:
+                    self.error.call(self.er_types['ElementDeclarationError'], node)
 
         elif node.type == 'assignment':
             self.assign_variable(node)
-        # elif node.type == 'assignment array':
-        #     self.assign_arr_variable(node)
-
+        elif node.type == 'assignment array':
+            # self.assign_arr_variable(node)
+            self.error.call(self.er_types['UnexpectedError'], node)
         elif node.type == 'variable':
             return self._variable(node)
         elif node.type == 'arr variable':
@@ -301,7 +378,19 @@ class interpreter:
         else:
             print('Not all nodes checked')
 
-
+    # CHECK NAME IN SYMBOLTABLE
+    def get_name(self, name):
+        res = None
+        length = len(name)
+        for var in sorted(self.symbol_table[self.scope].keys()):
+            if var[:length] == name:
+                if res is None:
+                    res = var
+                    if len(var) == len(name):
+                        return res
+                else:
+                    raise NameError
+        return res
 
     # CALCULATION
     def _calculation(self, node):
@@ -447,31 +536,31 @@ class interpreter:
     #         return self._index(node.child, indexes)
 
     def _variable(self, node):
-        var = node.value
-        if var in self.symbol_table[self.scope].keys():
-            return self.symbol_table[self.scope][var]
-        else:
+        var = self.get_name(node.value)
+        if var is None:
             raise UndeclaredVariableError
+        else:
+            return self.symbol_table[self.scope][var]
 
     def _arr_variable(self, node):
-        if node.value not in self.symbol_table[self.scope].keys():
+        name = self.get_name(node.value)
+        if name is None:
             raise UndeclaredVariableError
-        var = self.symbol_table[self.scope][node.value]
+        var = self.symbol_table[self.scope][name]
         if isinstance(var, variable):
             raise NotArrayError
-        i = self.get_el_index(node)
+        i = self.get_el_index(node, var)
         # val = var.array[i]
         # return self.symbol_table[self.scope][node.value].array[i]
         type_var = var.type
-        new_var = variable(type_var, node.value+str(i), self.symbol_table[self.scope][node.value].array[i])
+        new_var = variable(type_var, name + str(i), self.symbol_table[self.scope][name].array[i])
         return new_var
 
-    def get_el_index(self, var):
+    def get_el_index(self, node, var):
         ind = []
-        ind = self.get_var_indexes(var, ind)
+        ind = self.get_var_indexes(node, ind)
         if len(ind) == 1:
             return ind[0]
-        var = self.symbol_table[self.scope][var.value]
         if len(list(var.scope.values())) != len(ind):
             raise IndexError
         for i in range(len(ind)):
@@ -562,19 +651,24 @@ class interpreter:
                         raise ArrayDeclarationError
                     arr_indexes = {}
                     arr_indexes = self.get_indexes(var_ch.child, arr_indexes, 0)
-                    arr_values = self.get_arr_values(expr_ch, arr_type)
+                    arr_values = self.get_arr_values(expr_ch, arr_type, arr_indexes)
                     amount_items = self.count_items(arr_indexes)
                     if amount_items != len(arr_values):
                         raise ArrayDeclarationError
-                    # TODO: to check indexes and arrays
+                    if index_scope != len(arr_indexes.keys()):
+                        raise ArrayDeclarationError
                     var = arr_variable(arr_type, arr_name, arr_indexes, arr_values)
                     self.symbol_table[self.scope][arr_name] = var
                 elif var_ch.type == 'variable':
                     arr_indexes = {}
+                    for i in range(arr_scope):
+                        arr_indexes[i] = -1
                     arr_values = self.get_arr_values(expr_ch, arr_type, arr_indexes)
+                    for i in arr_indexes.values():
+                        if i == -1:
+                            raise ArrayDeclarationError
                     var = arr_variable(arr_type, arr_name, arr_indexes, arr_values)
                     self.symbol_table[self.scope][arr_name] = var
-                    # TODO: to check scope of vector of and values
 
         else:  # if type.type == 'type'
             if node.type == 'variable':
@@ -638,47 +732,47 @@ class interpreter:
             indexes[layer] = var.value
             return indexes
 
-    def get_arr_values(self, node, type, indexes=None):
+    def get_arr_values(self, node, type, indexes):
         arr = []
-        if node.type == 'array item':
-            self.get_arr_const(node, type, arr)
-            if indexes is not None:
-                indexes[0] = len(arr)
-        elif node.type == 'array':
-            arr = self.get_arr_next(node, type, arr)
+        if node.type == 'array_comma':
+            raise ArrayDeclarationError
         else:
-            arr.append(self.get_const(node, type))
-            if indexes:
-                indexes[0] = 1
+            self.get_arr_next(node.child, type, arr, indexes, 0, 0)
         return arr
 
-    def get_arr_next(self, node, type, arr):
-        if isinstance(node.child, list):
-            arr = self.get_arr_next(node.child[0], type, arr)
-            if node.child[1].type == 'array':
-                arr_new = self.get_arr_next(node.child[1], type, arr)
-                for i in arr_new:
-                    arr.append(i)
+    def get_arr_next(self, node, type, arr, indexes, lvl, amount):
+        if node.type == 'array_comma':
+            amount += 1
+            self.get_arr_next(node.child[0], type, arr, indexes, lvl, amount)
+            amount = self.get_arr_next(node.child[1], type, arr, indexes, lvl, amount)
+            if indexes[lvl] is None:
+                raise ArrayDeclarationError
+            if indexes[lvl] == -1:
+                indexes[lvl] = amount+1
             else:
-                self.get_arr_const(node.child[1], type, arr)
-            return arr
-        elif node.child.type == 'array':
-            arr_n = self.get_arr_next(node.child, type, arr)
-            for i in arr_n:
-                arr.append(i)
-            return arr
+                if indexes[lvl] != amount+1:
+                    raise ArrayDeclarationError
+        elif node.type == 'array_lvl':
+            self.get_arr_next(node.child, type, arr, indexes, lvl+1, 0)
         else:
-            arr_n = []
-            self.get_arr_const(node.child, type, arr_n)
-            return arr_n
+            st = len(arr)
+            self.get_arr_const(node, type, arr)
+            things = len(arr) - st
+            if indexes[lvl] is None:
+                raise ArrayDeclarationError
+            if indexes[lvl] == -1:
+                indexes[lvl] = things
+            else:
+                if indexes[lvl] != things:
+                    raise ArrayDeclarationError
+        return amount
 
     def get_arr_const(self, node, type, arr):
         if node.type == 'array item':
             arr.append(self.get_const(node.child[0], type))
-            return self.get_arr_const(node.child[1], type, arr)
+            self.get_arr_const(node.child[1], type, arr)
         else:
             arr.append(self.get_const(node, type))
-            return arr
 
     def get_const(self, node, type):
         if node.type == 'bool':
@@ -703,26 +797,29 @@ class interpreter:
     def assign_variable(self, node):
         var = node.child[0]
         if var.type == 'variable':
-            if var.value not in self.symbol_table[self.scope].keys():
-                self.error.call(self.er_types['UdeclaredVariableError'], node)
+            name = self.get_name(var.value)
+            if name is None:
                 raise UndeclaredVariableError
             expr = self.interp_node(node.child[1])
-            variab = self.symbol_table[self.scope][var.value]
+            variab = self.symbol_table[self.scope][name]
             if expr.type != variab.type:
                 expr = self.converse.converse(expr, variab.type)
             if isinstance(variab, arr_variable) and isinstance(expr, arr_variable):
-                self.symbol_table[self.scope][var.value].array = expr.array
+                self.symbol_table[self.scope][name].array = expr.array
+            elif isinstance(variab, variable) and isinstance(expr, variable):
+                self.symbol_table[self.scope][name].value = expr.value
             else:
-                self.symbol_table[self.scope][var.value].value = expr.value
+                raise ElementDeclarationError
         elif var.type == 'arr variable':
-            if var.value not in self.symbol_table[self.scope].keys():
+            name = self.get_name(var.value)
+            if name is None:
                 self.error.call(self.er_types['UndeclaredVariableError'], node)
                 raise UndeclaredVariableError
             expr = self.interp_node(node.child[1])
-            var_class = self.symbol_table[self.scope][var.value]
+            var_class = self.symbol_table[self.scope][name]
             if expr.type != var_class.type:
                 expr = self.converse.converse(expr, var_class.type)
-            ind = self.get_el_index(var)
+            ind = self.get_el_index(var, var_class)
             self.symbol_table[self.scope][var_class.name].array[ind] = str(expr.value)
 
     def func_if_then(self, node):
@@ -774,44 +871,14 @@ class interpreter:
                     if param.value == 'none':
                         input_param = []
                     else:
-                        # if param.child[1].type == 'arr variable':
-                        #     if param.child[1].value not in self.symbol_table[self.scope].keys():
-                        #         raise UndeclaredVariableError
-                        #     var = self.symbol_table[self.scope][param.child[1].value]
-                        #     if isinstance(var, variable):
-                        #         raise NotArrayError
-                        #     index = self.get_el_index(param.child[1])
-                        #     val = var.array[index]
-                        #     arr_var = variable(self.symbol_table[self.scope][param.child[1].value].type,
-                        #                        param.child[1].value+str(index), val)
-                        #     input_param.append(arr_var)
-                        # else:
-                        #     input_param.append(self.interp_node(param.child[1]))
-                        # p = self.interp_node(param.child[1])
-                        # input_param.append(p)
                         input_param.append(self.interp_node(param.child[1]))
                         if param.child[1].type == 'arr variable':
-                            change_value.append(len(input_param)-1)
+                            change_value.append(len(input_param) - 1)
                         param = param.child[0]
                 else:
-                    # if param.type == 'arr variable':
-                    #     if param.value not in self.symbol_table[self.scope].keys():
-                    #         raise UndeclaredVariableError
-                    #     var = self.symbol_table[self.scope][param.value]
-                    #     if isinstance(var, variable):
-                    #         raise NotArrayError
-                    #     index = self.get_el_index(param)
-                    #     val = var.array[index]
-                    #     arr_var = variable(self.symbol_table[self.scope][param.value].type,
-                    #                        param.value + str(index), val)
-                    #     input_param.append(arr_var)
-                    # else:
-                    #     input_param.append(self.interp_node(param))
-                    # p = self.interp_node(param)
-                    # input_param.append(p)
                     input_param.append(self.interp_node(param))
                     if param.type == 'arr variable':
-                        change_value.append(len(input_param)-1)
+                        change_value.append(len(input_param) - 1)
                     break
             input_param.reverse()
             for i in range(len(change_value)):
@@ -837,10 +904,8 @@ class interpreter:
         self.scope -= 1
         for i in range(len(input_param)):
             name = input_param[i].name
-            input_param[i] = copy.deepcopy(func_param[i])
+            input_param[i] = self.converse.converse(func_param[i], input_param[i].type)
             input_param[i].name = name
-            # self.symbol_table[self.scope][input_param[i].name] = copy.deepcopy(func_param[i])
-            # self.symbol_table[self.scope][input_param[i].name].name = input_param[i].name
         for p in change_value:
             par = input_param[p]
             arr_type = self.symbol_table[self.scope][par.name[:-1]].type
@@ -853,7 +918,6 @@ class interpreter:
                 if var is not None:
                     self.symbol_table[self.scope][var.name] = var
         return result
-
 
     def get_parameter(self, node):
         if node.type == 'param_none':
@@ -868,7 +932,7 @@ class interpreter:
             if len(node.child) == 0 or node.child[0].type == 'param':
                 break
             node = node.child[0]
-        #param.reverse()
+        # param.reverse()
         return param
 
     def combine_param(self, node):
@@ -880,50 +944,25 @@ class interpreter:
             type = type_node.value
             return variable(type, ch_node.value)
 
-        else: # type_node.type == 'arr':
+        else:  # type_node.type == 'arr':
             arr_scope = self._arr_scope(type_node, 1)
             arr_type = self._arr_type(type_node)
             scope = {}
             for i in range(arr_scope):
                 scope[i] = 0
             return arr_variable(arr_type, ch_node.value, scope)
-            # else:
-            #     arr_indexes = {}
-            #     arr_indexes = self.get_indexes(ch_node.child, arr_indexes, 0)
-            #     if len(arr_indexes.keys()) != arr_scope:
-            #         raise ArrayDeclarationError
-            #     return arr_variable(arr_type, ch_node.value, arr_indexes)
+
 
     def set_param(self, input, func):
-        #input = copy.deepcopy(self.converse.converse(input, func.type))
-        if input.type == 'int' and input.name == "" and func.type == 'short':
-            input = self.converse.converse(input, 'short')
-        if input.type != func.type:
-            raise WrongParameterError
         if isinstance(input, arr_variable) and isinstance(func, arr_variable):
-            k = 0
-            for i in input.scope.values():
-                func.scope[k] = i
-                k += 1
-            func.array = input.array
+            t = self.converse.converse(input, func.type)
+            func.array = t.array
+            func.scope = t.scope
         elif isinstance(input, variable) and isinstance(func, variable):
-            func.value = input.value
+            t = self.converse.converse(input, func.type)
+            func.value = t.value
         else:
             raise WrongParameterError
-
-    def set_param1(self, input, func):
-        #input = copy.deepcopy(self.converse.converse(input, func.type))
-        if input.type == 'int' and input.name == "" and func.type == 'short':
-            input = self.converse.converse(input, 'short')
-        if input.type != func.type:
-            raise WrongParameterError
-        if isinstance(input, arr_variable) and isinstance(func, arr_variable):
-            func = input
-        elif isinstance(input, variable) and isinstance(func, variable):
-            func = input
-        else:
-            raise WrongParameterError
-
 
 
 if __name__ == '__main__':
@@ -931,14 +970,15 @@ if __name__ == '__main__':
     f = open('factorial.txt')
     data = f.read().lower()
     f.close()
-    prog = data
+    prog = data1
     i = interpreter(program=prog)
     res = i.interpret()
     if res:
         print(i.symbol_table)
     else:
         print('===SOMETHING WRONG===')
-    if i.exit:
-        print('Robot found exit!')
-    else:
-        print('Robot can\'t find exit')
+    if i.robot is not None:
+        if i.exit:
+            print('Robot found exit!')
+        else:
+            print('Robot can\'t find exit')

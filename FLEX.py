@@ -132,14 +132,21 @@ class LexerClass:
         return t
 
 
-data1 = '''function addition(int a)
-a set -s1;
+"""function func(bool op)
+op set false;
 return 1;
 
 function work()
 begin
-vector of vector of int mass[2][2] set { {1, 2}, {3, 4} };
-addition(mass[0][0]);
+int var set 2;
+func(var);
+end
+return 0;"""
+
+
+data1 = '''function work()
+begin
+vector of vector of int arr set { {1, 2}, {3, 4}};
 end
 return 0;
 '''
@@ -148,7 +155,7 @@ if __name__ == '__main__':
     data = f.read().lower()
     f.close()
     l = LexerClass()
-    l.input(data)
+    l.input(data1)
     while True:
         tok = l.token()
         if not tok:

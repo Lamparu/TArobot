@@ -19,7 +19,8 @@ class Error_handler:
             'UndeclaredFunctionError',
             'CallWorkError',
             'WrongParameterError',
-            'RobotError'
+            'RobotError',
+            'NameError'
         ]
 
     def call(self, err_type, node=None):
@@ -40,7 +41,7 @@ class Error_handler:
         elif self.type == 5:
             sys.stderr.write(f'Can\'t converse types at line {self.node.lineno}\n')
         elif self.type == 6:
-            sys.stderr.write(f'Using undeclared variable "{self.node.value}" at line {self.node.lineno}\n')
+            sys.stderr.write(f'Using undeclared variable "{self.node.child[0].value}" at line {self.node.lineno}\n')
         elif self.type == 7:
             sys.stderr.write(f'Wrong declaration of array "{self.node.value}" at line {self.node.lineno}\n')
         elif self.type == 8:
@@ -53,6 +54,8 @@ class Error_handler:
             sys.stderr.write(f'Wrong parameters in function "{self.node.value}" at line {self.node.lineno}\n')
         elif self.type == 12:
             sys.stderr.write(f'Robot error at line {self.node.lineno}\n')
+        elif self.type == 13:
+            sys.stderr.write(f'Name "{self.node.value}" at line {self.node.lineno} correlates with 2 or more\n')
 
 
 class UnexpectedError(Exception):
@@ -104,4 +107,8 @@ class WrongParameterError(Exception):
 
 
 class RobotError(Exception):
+    pass
+
+
+class NameError(Exception):
     pass
