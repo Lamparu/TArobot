@@ -146,7 +146,8 @@ class ParserClass:
         """expr : variable
                 | const
                 | callfunc
-                | math_expr"""
+                | math_expr
+                | command"""
         p[0] = p[1]
         #p[0] = node('expression', ch=p[1], no=p.lineno(1))
 
@@ -193,7 +194,7 @@ class ParserClass:
         elif len(p) == 3:
             p[0] = node('func_param', ch=[p[1], p[2]], no=p.lineno(1))
         else:
-            p[0] = node('func_param', val='none', no=p.lineno(1))
+            p[0] = node('func_param', val='none')
 
     def p_const(self, p):
         """const : digit
@@ -307,6 +308,7 @@ class ParserClass:
             p[0] = node('command', val=p[1], no=p.lineno(1))
         else:
             p[0] = node('command', val=p[2], no=p.lineno(1))
+
 
     def p_error(self, p):
         try:

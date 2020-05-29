@@ -1,8 +1,21 @@
+from interpreter import variable
+
+# cells = {
+#     '▲': 'empty',  # четные
+#     '▼': 'empty',  # нечетные
+#     '☀': 'exit',
+#     '☒': 'wall'
+# }
 cells = {
-    '▲': 'up',  # четные
-    '▼': 'down',  # нечетные
-    '☀': 'exit',
-    '☒': 'wall'
+    ' ': 'empty',  # четные
+    'E': 'exit',
+    '#': 'wall'
+}
+
+back_cells = {
+    'empty': ' ',
+    'exit': 'E',
+    'wall': '#'
 }
 ''' MATRIX:
 Δ ▲▼ ☒ ☆ ☀
@@ -24,7 +37,7 @@ class Cell:
         return f'{self.type}'
 
 class Robot:
-    def __index__(self, x, y, right, map):
+    def __init__(self, x, y, right, map):
         self.x = x
         self.y = y
         self._right = right
@@ -42,12 +55,12 @@ class Robot:
                 if i == self.y and j == self.x:
                     print('☆', end='')
                 else:
-                    print(self.map[i][j].type, end='')
+                    print(back_cells[self.map[i][j].type], end='')
             print()
 
     def move(self, direction):
         if direction == 'move':
-            if (self.x+self.y) % 2 == 0:
+            if (self.x+self.y + 1) % 2 == 0:
                 return self.down()
             else:
                 return self.up()
@@ -56,42 +69,48 @@ class Robot:
         elif direction == 'right':
             return self.right()
         else:
-            return False
+            return variable('int', '', 0)
 
     def up(self):
         if self.y <= 0:
-            return 0
-        if (self.x + self.y) % 2 == 0:
-            return 0
+            return variable('int', '', 0)
+        if (self.x + self.y + 1) % 2 == 0:
+            return variable('int', '', 0)
         else:
-            self.y -= 1
-            return 1
+            if self.map[self.y - 1][self.x].type != 'wall':
+                self.y -= 1
+                return variable('int', '', 1)
+        return variable('int', '', 0)
 
     def down(self):
         if self.y >= len(self.map):
-            return 0
-        if (self.x + self.y) % 2 == 0:
-            self.y -= 1
-            return 1
-        else:
-            return 0
+            return variable('int', '', 0)
+        if (self.x + self.y + 1) % 2 == 0:
+            if self.map[self.y + 1][self.x].type != 'wall':
+                self.y += 1
+                return variable('int', '', -1)
+        return variable('int', '', 0)
 
     def left(self):
         if self.x <= 0:
-            return 0
+            return variable('int', '', 0)
         else:
-            self.x -= 1
-            return 1
+            if self.map[self.y][self.x - 1].type != 'wall':
+                self.x -= 1
+                return variable('int', '', -1)
+        return variable('int', '', 0)
 
     def right(self):
         if self.x >= len(self.map[0]):
-            return 0
+            return variable('int', '', 0)
         else:
-            self.x += 1
-            return 1
+            if self.map[self.y][self.x + 1].type != 'wall':
+                self.x += 1
+                return variable('int', '', 1)
+        return variable('int', '', 0)
 
     def exit(self):
-        if self.map[self.x][self.y].type == 'exit':
+        if self.map[self.y][self.x].type == 'exit':
             return True
         return False
 
@@ -99,23 +118,23 @@ class Robot:
         dist = 1
         length = 5
         if self._right:
-            while self.map[self.y][self.x+dist].type == 'up' or self.map[self.y][self.x+dist].type == 'down':
+            while self.map[self.y][self.x+dist].type == 'empty':
                 if length == 0:
-                    return 0
+                    return variable('int', '', 0)
                 dist += 1
                 length -= 1
             if self.map[self.y][self.x+dist].type == 'exit':
-                return -dist
+                return variable('int', '', -dist)
             elif self.map[self.y][self.x+dist].type == 'wall':
-                return dist
+                return variable('int', '', dist)
         else:  # left side
-            while self.map[self.y][self.x-dist].type == 'up' or self.map[self.y][self.x-dist].type == 'down':
+            while self.map[self.y][self.x-dist].type == 'empty':
                 if length == 0:
-                    return 0
+                    return variable('int', '', 0)
                 dist += 1
                 length -= 1
             if self.map[self.y][self.x+dist].type == 'exit':
-                return dist
+                return variable('int', '', dist)
             elif self.map[self.y][self.x+dist].type == 'wall':
-                return -dist
+                return variable('int', '', -dist)
 

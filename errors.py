@@ -20,7 +20,8 @@ class Error_handler:
             'CallWorkError',
             'WrongParameterError',
             'RobotError',
-            'NameError'
+            'NameError',
+            'ArrayToVariableError'
         ]
 
     def call(self, err_type, node=None):
@@ -35,15 +36,22 @@ class Error_handler:
         elif self.type == 2:
             sys.stderr.write(f'Index is wrong at line {self.node.lineno}\n')
         elif self.type == 3:
-            sys.stderr.write(f'Redeclaration of a variable "{self.node.value}" at line {self.node.lineno}\n')
+            sys.stderr.write(f'Redeclaration of a variable "{self.node.child[1].child[0].value}" at line {self.node.child[1].child[0].lineno}\n')
         elif self.type == 4:
-            sys.stderr.write(f'Declared element of array at line {self.node.lineno}\n')
+            sys.stderr.write(f'Declared element of array at line {self.node.child[0].lineno}\n')
         elif self.type == 5:
             sys.stderr.write(f'Can\'t converse types at line {self.node.lineno}\n')
         elif self.type == 6:
-            sys.stderr.write(f'Using undeclared variable "{self.node.child[0].value}" at line {self.node.lineno}\n')
+            if node.type == 'variable' or node.type == 'arr variable':
+                sys.stderr.write(f'Using undeclared variable "{self.node.value}" at line {self.node.lineno}\n')
+            else:
+                sys.stderr.write(f'Using undeclared variable "{self.node.child[0].value}" at line {self.node.child[0].lineno}\n')
         elif self.type == 7:
-            sys.stderr.write(f'Wrong declaration of array "{self.node.value}" at line {self.node.lineno}\n')
+            if node.child[1].type == 'variable' or node.child[1].type == 'arr variable':
+                sys.stderr.write(
+                    f'Wrong declaration of array "{self.node.child[1].value}" at line {self.node.child[1].lineno}\n')
+            else:
+                sys.stderr.write(f'Wrong declaration of array "{self.node.child[1].child[0].value}" at line {self.node.child[1].child[0].lineno}\n')
         elif self.type == 8:
             sys.stderr.write(f'Trying to get index from not array variable "{self.node.value}" at line {self.node.lineno}\n')
         elif self.type == 9:
@@ -55,7 +63,13 @@ class Error_handler:
         elif self.type == 12:
             sys.stderr.write(f'Robot error at line {self.node.lineno}\n')
         elif self.type == 13:
-            sys.stderr.write(f'Name "{self.node.value}" at line {self.node.lineno} correlates with 2 or more\n')
+            if node.type == 'variable' or node.type == 'arr variable':
+                sys.stderr.write(
+                    f'Name "{self.node.value}" at line {self.node.lineno} correlates with 2 or more\n')
+            else:
+                sys.stderr.write(f'Name "{self.node.child[0].value}" at line {self.node.child[0].lineno} correlates with 2 or more\n')
+        elif self.type == 14:
+            sys.stderr.write(f'Can\'t assign variable to array variable or vice versa at line {self.node.lineno}\n')
 
 
 class UnexpectedError(Exception):
@@ -111,4 +125,8 @@ class RobotError(Exception):
 
 
 class NameError(Exception):
+    pass
+
+
+class ArrayToVariableError(Exception):
     pass
