@@ -130,3 +130,7 @@ class NameError(Exception):
 
 class ArrayToVariableError(Exception):
     pass
+
+
+class Exit(Exception):
+    pass

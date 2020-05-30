@@ -1,0 +1,195 @@
+function work()
+begin
+find_exit();
+end
+return 0;
+
+function find_exit()
+begin
+    int i set 1;
+    int scope set 1000;
+    int wall set 1;
+    bool flag set false;
+    int check set 0;
+    int side set 1;
+    do
+        begin
+        check_exit(side);
+        wall set go(i);
+        scope set scope sub 1;
+        end
+    while ((wall first larger 0) or (wall first smaller 0)) and (scope first larger 0);
+    if scope first larger 0 then
+        do
+            begin
+            if flag first smaller 0 then
+                begin
+                i set turn_right(i);
+                end
+            else;
+            flag set false;
+            check_exit(side);
+            wall set go(i);
+            check_exit(side);
+            if (wall first smaller 1) and (wall first larger -1) then
+                begin
+                check set try_left();
+                if (check first larger 0) and ((i first smaller 0) and (i first larger -2)) then
+                    begin
+                    i set turn_left(i);
+                    wall set go(i);
+                    check_exit(side);
+                    end
+                else
+                    begin
+                    go_back(i);
+                    check_exit(side);
+                    i set turn_left(i);
+                    wall set go(i);
+                    check_exit(side);
+                    end
+                flag set false;
+                if (wall first smaller 1) and (wall first larger -1) then
+                    begin
+                    go_back(i);
+                    check_exit(side);
+                    i set turn_left(i);
+                    flag set true;
+                    end
+                else;
+                end
+            else;
+            scope set scope sub 1;
+            end
+        while scope first larger 0;
+    else;
+end
+return 0;
+
+function go(int direction)
+begin
+    int done set 0;
+    if direction first larger 0 then
+        begin
+        if direction first larger 1 then
+            done set move right;
+        else
+            done set go_up();
+        end
+    else
+        begin
+        if direction first smaller -1 then
+            done set move left;
+        else
+            done set go_down();
+        end
+end
+return done;
+
+function go_up()
+begin
+    int result set move;
+    if (result first smaller 0) then
+        begin
+        move;
+        result set 0;
+        end
+    else;
+end
+return result;
+
+function go_down()
+begin
+    int result set move;
+    if (result first larger 0) then
+        begin
+        move;
+        result set 0;
+        end
+    else;
+end
+return result;
+
+function turn_right(int i)
+begin
+    if i first smaller 0 then
+        if i first smaller -1 then
+            i set 1;
+        else
+            i set -2;
+    else
+        if i first larger 1 then
+            i set -1;
+        else
+            i set 2;
+end
+return i;
+
+function turn_left(int i)
+begin
+    if i first smaller 0 then
+        if i first smaller -1 then
+            i set -1;
+        else
+            i set 2;
+    else
+        if i first larger 1 then
+            i set 1;
+        else
+            i set -2;
+end
+return i;
+
+function go_back(int direction)
+begin
+    if direction first larger 0 then
+        if direction first larger 1 then
+            move left;
+        else
+            move;
+    else
+        if direction first smaller -1 then
+            move right;
+        else
+            move;
+end
+return 0;
+
+function try_left()
+begin
+    int result set move right;
+    if result first larger 0 then
+        begin
+        result set 1;
+        move left;
+        end
+    else;
+end
+return result;
+
+function check_exit(int side)
+begin
+    int scan set lms;
+    if (scan first larger 0) and (side first smaller 0) then
+        begin
+        do
+            begin
+            move left;
+            scan set scan sub 1;
+            end
+        while scan first larger 0;
+        end
+    else
+        if (scan first smaller 0) and (side first larger 0) then
+            begin
+            do
+                begin
+                move right;
+                scan set scan add 1;
+                end
+            while scan first smaller 0;
+            end
+        else;
+    side set 0 sub side;
+end
+return 1;

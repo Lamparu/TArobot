@@ -146,7 +146,7 @@ return 0;"""
 
 data1 = '''function work()
 begin
-vector of vector of vector of int arr set { {1, 2}, {3, 4}};
+vector of vector of int array[2][2], test set {{1, 2}, {3, 4}};
 end
 return 0;
 '''

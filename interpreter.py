@@ -1,4 +1,5 @@
 import sys
+import os
 import copy
 from YACC import ParserClass
 from FLEX import data1
@@ -206,6 +207,7 @@ class interpreter:
         self.correct = None
         self.program = program
         self.robot = robot
+        self.steps = 0
         self.exit = False
 
     def interpret(self):
@@ -224,10 +226,14 @@ class interpreter:
                 sys.stderr.write(f'RecursionError: function calls itself too many times\n')
                 sys.stderr.write("========= Program has finished with fatal error =========\n")
                 return False
+            except Exit:
+                return True
         else:
             sys.stderr.write(f'Incorrect input file\n')
 
     def interp_node(self, node):
+        if self.exit:
+            raise Exit
         if node is None:
             return
         elif node.type == 'NL':
@@ -247,42 +253,29 @@ class interpreter:
         elif node.type == 'declaration':
             decl_type = node.child[0]
             decl_child = node.child[1]
-            if decl_child.type == 'var_list':
-                for child in decl_child.child:
-                    try:
-                        self.declaration(child, decl_type)
-                    except RedeclarationError:
-                        self.error.call(self.er_types['RedeclarationError'], node)
-                    except IndexError:
-                        self.error.call(self.er_types['IndexError'], node)
-                    except ConverseError:
-                        self.error.call(self.er_types['ConverseError'], node)
-                    except ArrayDeclarationError:
-                        self.error.call(self.er_types['ArrayDeclarationError'], node)
-                    except ElementDeclarationError:
-                        self.error.call(self.er_types['ElementDeclarationError'], node)
-                    except WrongParameterError:
-                        self.error.call(self.er_types['WrongParameterError'], node)
-                    except NameError:
-                        self.error.call(self.er_types['NameError'], node)
-
-            else:
-                try:
+            try:
+                if decl_child.type == 'var_list':
+                    while decl_child.type == 'var_list':
+                        self.declaration(decl_type, decl_child.child[0])
+                        if decl_child.child[1].type != 'var_list':
+                            self.declaration(decl_type, decl_child.child[1])
+                        decl_child = decl_child.child[1]
+                else:
                     self.declaration(decl_type, decl_child)
-                except RedeclarationError:
-                    self.error.call(self.er_types['RedeclarationError'], node)
-                except IndexError:
-                    self.error.call(self.er_types['IndexError'], node)
-                except ConverseError:
-                    self.error.call(self.er_types['ConverseError'], node)
-                except ArrayDeclarationError:
-                    self.error.call(self.er_types['ArrayDeclarationError'], node)
-                except ElementDeclarationError:
-                    self.error.call(self.er_types['ElementDeclarationError'], node)
-                except WrongParameterError:
-                    self.error.call(self.er_types['WrongParameterError'], node)
-                except NameError:
-                    self.error.call(self.er_types['NameError'], node)
+            except RedeclarationError:
+                self.error.call(self.er_types['RedeclarationError'], node)
+            except IndexError:
+                self.error.call(self.er_types['IndexError'], node)
+            except ConverseError:
+                self.error.call(self.er_types['ConverseError'], node)
+            except ArrayDeclarationError:
+                self.error.call(self.er_types['ArrayDeclarationError'], node)
+            except ElementDeclarationError:
+                self.error.call(self.er_types['ElementDeclarationError'], node)
+            except WrongParameterError:
+                self.error.call(self.er_types['WrongParameterError'], node)
+            except NameError:
+                self.error.call(self.er_types['NameError'], node)
 
         elif node.type == 'assignment':
             try:
@@ -299,8 +292,8 @@ class interpreter:
                 self.error.call(self.er_types['WrongParameterError'], node)
             except NameError:
                 self.error.call(self.er_types['NameError'], node)
-            #except ArrayToVariableError:
-             #   self.error.call(self.er_types['ArrayToVariableError'], node)
+            except ArrayToVariableError:
+                self.error.call(self.er_types['ArrayToVariableError'], node)
         elif node.type == 'assignment array':
             # self.assign_arr_variable(node)
             self.error.call(self.er_types['UnexpectedError'], node)
@@ -401,12 +394,13 @@ class interpreter:
                 self.correct = False
                 return 0
             if node.value == 'lms':
-                return variable('int', 'lms', self.robot.lms())
+                return self.robot.lms()
             else:
                 if self.robot.exit():
                     self.exit = True
-                    return 1
-                self.robot.show()
+                    return variable('bool', 'exit', 'true')
+                self.steps += 1
+                # self.robot.show()
                 return self.robot.move(node.value)
 
         else:
@@ -655,6 +649,9 @@ class interpreter:
             return 1
 
     def declaration(self, type, node):
+        if node.type == 'var_list':
+            for child in node.child:
+                self.declaration(type, child)
         if type.type == 'arr':
             if node.type == 'variable':
                 raise ArrayDeclarationError
@@ -714,9 +711,6 @@ class interpreter:
                     self.symbol_table[self.scope][node.value] = variable(type.value, node.value)
             elif node.type == 'arr variable':
                 raise ElementDeclarationError
-            elif node.type == 'var_list':
-                for ch in node.child:
-                    self.declaration(type, ch)
             elif node.type == 'assignment array':
                 raise ArrayDeclarationError
             else:  # if node.type == 'assignment'
@@ -842,22 +836,28 @@ class interpreter:
                 return
             if expr.type != variab.type:
                 expr = self.converse.converse(expr, variab.type)
-            # if isinstance(variab, arr_variable) and isinstance(expr, arr_variable):
-            #     self.symbol_table[self.scope][name].array = expr.array
-            # elif isinstance(variab, variable) and isinstance(expr, variable):
-            #     self.symbol_table[self.scope][name].value = expr.value
-            # else:
-            #     raise ArrayToVariableError
-            if isinstance(variab, variable):
-                if expr.value is not None:
+            if self.robot is None:
+                if isinstance(variab, arr_variable) and isinstance(expr, arr_variable):
+                    self.symbol_table[self.scope][name].array = expr.array
+                elif isinstance(variab, variable) and isinstance(expr, variable):
                     self.symbol_table[self.scope][name].value = expr.value
                 else:
                     raise ArrayToVariableError
             else:
-                if expr.array is not None:
+                if isinstance(variab, arr_variable):
                     self.symbol_table[self.scope][name].array = expr.array
                 else:
-                    raise ArrayToVariableError
+                    self.symbol_table[self.scope][name].value = expr.value
+            # if isinstance(variab, variable):
+            #     if isinstance(expr, variable):
+            #         self.symbol_table[self.scope][name].value = expr.value
+            #     else:
+            #         raise ArrayToVariableError
+            # else:
+            #     if isinstance(expr, arr_variable):
+            #         self.symbol_table[self.scope][name].array = expr.array
+            #     else:
+            #         raise ArrayToVariableError
         elif var.type == 'arr variable':
             name = self.get_name(var.value)
             if name is None:
@@ -1013,8 +1013,14 @@ class interpreter:
             raise WrongParameterError
 
 
-def create_robot():
-    with open('map_simple.txt') as file:
+def create_robot(descriptor):
+    # with open('map_simple.txt') as file:
+    #   text = file.read()
+    # with open('map_empty.txt') as file:
+    #   text = file.read()
+    # with open('map_big.txt') as file:
+    #   text = file.read()
+    with open(descriptor) as file:
         text = file.read()
     text = text.split('\n')
     robot_info = text.pop(0).split(' ')
@@ -1034,30 +1040,59 @@ def create_robot():
         line = [Cell(cells[i]) for i in line]
         mapp[pos] = line
         pos += 1
-    return Robot(x, y, True, mapp)
+    return Robot(x, y, mapp)
 
 
 if __name__ == '__main__':
-    # f = open('algosort.txt')
-    # f = open('factorial.txt')
-    # f = open('test_errors.txt')
-    f = open('right_hand.txt')
-    robot = create_robot()
-    data = f.read().lower()
-    f.close()
-    prog = data
-    i = interpreter(program=prog, robot=robot)
-    res = i.interpret()
-    if res:
-        print(i.symbol_table)
-    else:
-        print('===SOMETHING WRONG===')
-    if i.robot is not None:
+    prog_names = ['Programs/algosort.txt', 'Programs/factorial.txt', 'Programs/test_errors.txt']
+    algo = ['Algorithms/right_hand.txt', 'Algorithms/rh_lms.txt', 'Algorithms/rh_empty.txt']
+    maps = ['Maps/map_empty.txt', 'Maps/map_simple.txt', 'Maps/map_big.txt']
+    print('1 - Algorithm \n2 - Robot')
+    n = int(input())
+    if n == 1:
+        print('1 - QuickSort \n2 - Factorial \n3 - Errors')
+        num = int(input())
+        if num < 1 or num > 3:
+            print('Wrong number\n')
+        else:
+            f = open(prog_names[num-1])
+            prog = f.read().lower()
+            i = interpreter(program=prog)
+            res = i.interpret()
+            if res:
+                print('Symbol table:')
+                for symbol_table in i.symbol_table:
+                    for k, v in symbol_table.items():
+                        print(v)
+            else:
+                print('Something wrong')
+            f.close()
+    elif n == 2:
+        print('1 - Empty map \n2 - Simple map \n3 - Big map')
+        m = int(input())
+        if m < 1 or m > 3:
+            print('Wrong number\n')
+        else:
+            robot = create_robot(maps[m-1])
+        if m == 1:
+            f = open(algo[2])
+        else:
+            f = open(algo[1])
+        prog = f.read().lower()
+        f.close()
+        i = interpreter(program=prog, robot=robot)
+        i.robot.show()
+        res = i.interpret()
+        if res:
+            print('Symbol table:')
+            for symbol_table in i.symbol_table:
+                for k, v in symbol_table.items():
+                    print(v)
+        else:
+            print('Something wrong')
         if i.exit:
-            print('Robot found exit!')
+            print(f'Robot found exit in {i.steps} steps')
         else:
             print('Robot can\'t find exit')
         print(i.robot)
-        print(i.robot.map)
-        print(i.robot.map[4][1])
-        i.robot.show()
+

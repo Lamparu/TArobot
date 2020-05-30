@@ -1,4 +1,5 @@
 from interpreter import variable
+import time
 
 # cells = {
 #     '▲': 'empty',  # четные
@@ -37,10 +38,10 @@ class Cell:
         return f'{self.type}'
 
 class Robot:
-    def __init__(self, x, y, right, map):
+    def __init__(self, x, y, map):
         self.x = x
         self.y = y
-        self._right = right
+        self._right = True
         self.map = map
 
     def __repr__(self):
@@ -55,12 +56,22 @@ class Robot:
                 if i == self.y and j == self.x:
                     print('☆', end='')
                 else:
-                    print(back_cells[self.map[i][j].type], end='')
+                    if back_cells[self.map[i][j].type] == ' ':
+                        if (i+j) % 2 == 0:
+                            print('▲', end='')
+                        else:
+                            print('▼', end='')
+                    elif back_cells[self.map[i][j].type] == '#':
+                        print('☒', end='')
+                    else:
+                        print('☀', end='')
             print()
+        print()
+        # time.sleep(1)
 
     def move(self, direction):
         if direction == 'move':
-            if (self.x+self.y + 1) % 2 == 0:
+            if (self.x+self.y) % 2 == 0:
                 return self.down()
             else:
                 return self.up()
@@ -74,7 +85,7 @@ class Robot:
     def up(self):
         if self.y <= 0:
             return variable('int', '', 0)
-        if (self.x + self.y + 1) % 2 == 0:
+        if (self.x + self.y) % 2 == 0:
             return variable('int', '', 0)
         else:
             if self.map[self.y - 1][self.x].type != 'wall':
@@ -85,7 +96,7 @@ class Robot:
     def down(self):
         if self.y >= len(self.map):
             return variable('int', '', 0)
-        if (self.x + self.y + 1) % 2 == 0:
+        if (self.x + self.y) % 2 == 0:
             if self.map[self.y + 1][self.x].type != 'wall':
                 self.y += 1
                 return variable('int', '', -1)

@@ -1,0 +1,30 @@
+function wat(vector of int anything)
+begin
+anything[0] set 1;
+end
+return 0;
+
+function work()
+begin
+vector of vector of int arr1 set { {1, 2}, {3, 4, 5}};
+vector of vector of vector of int arr2 set { {1, 2}, {3, 4}};
+vector of vector of vector of int arr3;
+vector of vector of vector of int arr4[-3];
+int operand set 5;
+int operand set -1;
+bool operation set true;
+oper set 1;
+int marko[2][3] set 6;
+vector of int testing set {1, 2, 3, 4};
+testing[5] set -1;
+int big set 200;
+big set testing;
+testing set big;
+big set idk;
+big[0] set 1;
+not_func(1 2);
+big set work();
+wat(big);
+move;
+end
+return 0;
