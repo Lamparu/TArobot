@@ -132,21 +132,10 @@ class LexerClass:
         return t
 
 
-"""function func(bool op)
-op set false;
-return 1;
-
-function work()
-begin
-int var set 2;
-func(var);
-end
-return 0;"""
-
-
 data1 = '''function work()
 begin
-vector of vector of int array[2][2], test set {{1, 2}, {3, 4}};
+vector of int array[2] set {1, 2};
+vector of bool test set array;
 end
 return 0;
 '''

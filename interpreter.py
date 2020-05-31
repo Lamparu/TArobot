@@ -90,7 +90,7 @@ class TypeConverser:
             else:
                 return variable('bool', '', 'undefined')
         else:
-            arr = []
+            arr = copy.deepcopy(var.array)
             for i in range(len(var.array)):
                 if var.array[i][0] == 's':
                     if int(var.array[i][1:]) > 0:
@@ -129,7 +129,7 @@ class TypeConverser:
             else:
                 return variable('int', '', var.value[1:])
         else:
-            arr = []
+            arr = copy.deepcopy(var.array)
             for i in range(len(var.array)):
                 if var.array[i][0] == 's':
                     arr[i] = var.array[i][1:]
@@ -148,7 +148,7 @@ class TypeConverser:
             else:
                 return variable('int', '', 0)
         else:
-            arr = []
+            arr = copy.deepcopy(var.array)
             for i in range(len(var.array)):
                 if var.array[i] == 'true':
                     arr[i] = '1'
@@ -167,7 +167,7 @@ class TypeConverser:
             else:
                 return variable('short', '', 0)
         else:
-            arr = []
+            arr = copy.deepcopy(var.array)
             for i in range(len(var.array)):
                 if var.array[i] == 'true':
                     arr[i] = '1'
@@ -200,7 +200,7 @@ class interpreter:
             'WrongParameterError': 11,
             'RobotError': 12,
             'NameError': 13,
-            'ArrayToVariableError':14
+            'ArrayToVariableError': 14
         }
         self.tree = None
         self.funcs = None
@@ -838,6 +838,8 @@ class interpreter:
                 expr = self.converse.converse(expr, variab.type)
             if self.robot is None:
                 if isinstance(variab, arr_variable) and isinstance(expr, arr_variable):
+                    if variab.scope != expr.scope:
+                        raise IndexError
                     self.symbol_table[self.scope][name].array = expr.array
                 elif isinstance(variab, variable) and isinstance(expr, variable):
                     self.symbol_table[self.scope][name].value = expr.value
@@ -864,11 +866,12 @@ class interpreter:
                 self.error.call(self.er_types['UndeclaredVariableError'], node)
                 raise UndeclaredVariableError
             expr = self.interp_node(node.child[1])
-            var_class = self.symbol_table[self.scope][name]
-            if expr.type != var_class.type:
-                expr = self.converse.converse(expr, var_class.type)
-            ind = self.get_el_index(var, var_class)
-            self.symbol_table[self.scope][var_class.name].array[ind] = str(expr.value)
+            if expr != None:
+                var_class = self.symbol_table[self.scope][name]
+                if expr.type != var_class.type:
+                    expr = self.converse.converse(expr, var_class.type)
+                ind = self.get_el_index(var, var_class)
+                self.symbol_table[self.scope][var_class.name].array[ind] = str(expr.value)
 
     def func_if_then(self, node):
         condition = self.interp_node(node.child['condition'])
@@ -1014,12 +1017,6 @@ class interpreter:
 
 
 def create_robot(descriptor):
-    # with open('map_simple.txt') as file:
-    #   text = file.read()
-    # with open('map_empty.txt') as file:
-    #   text = file.read()
-    # with open('map_big.txt') as file:
-    #   text = file.read()
     with open(descriptor) as file:
         text = file.read()
     text = text.split('\n')
@@ -1046,17 +1043,59 @@ def create_robot(descriptor):
 if __name__ == '__main__':
     prog_names = ['Programs/algosort.txt', 'Programs/factorial.txt', 'Programs/test_errors.txt']
     algo = ['Algorithms/right_hand.txt', 'Algorithms/rh_lms.txt', 'Algorithms/rh_empty.txt']
-    maps = ['Maps/map_empty.txt', 'Maps/map_simple.txt', 'Maps/map_big.txt']
-    print('1 - Algorithm \n2 - Robot')
-    n = int(input())
-    if n == 1:
-        print('1 - QuickSort \n2 - Factorial \n3 - Errors')
-        num = int(input())
-        if num < 1 or num > 3:
-            print('Wrong number\n')
-        else:
-            f = open(prog_names[num-1])
+    maps = ['Maps/map_empty.txt', 'Maps/map_simple.txt', 'Maps/map_big.txt', 'Maps/map_no_exit.txt']
+    n = 0
+    while 3 > n > -1:
+        print('\n==========\n1 - Algorithm \n2 - Robot \n3 - Exit\n==========\n')
+        n = int(input())
+        if n == 1:
+            print('1 - QuickSort \n2 - Factorial \n3 - Errors')
+            num = int(input())
+            if num < 1 or num > 3:
+                print('Wrong number\n')
+            else:
+                f = open(prog_names[num-1])
+                prog = f.read().lower()
+                i = interpreter(program=prog)
+                res = i.interpret()
+                if res:
+                    print('Symbol table:')
+                    for symbol_table in i.symbol_table:
+                        for k, v in symbol_table.items():
+                            print(v)
+                else:
+                    print('Something wrong')
+                f.close()
+        elif n == 2:
+            print('1 - Empty map \n2 - Simple map \n3 - Big map \n4 - No exit')
+            m = int(input())
+            if m < 1 or m > 4:
+                print('Wrong number\n')
+            else:
+                robot = create_robot(maps[m-1])
+            f = open(algo[1])
             prog = f.read().lower()
+            f.close()
+            i = interpreter(program=prog, robot=robot)
+            i.robot.show()
+            res = i.interpret()
+            if res:
+                print('Symbol table:')
+                for symbol_table in i.symbol_table:
+                    for k, v in symbol_table.items():
+                        print(v)
+            else:
+                print('Something wrong')
+            if i.exit:
+                print('\n٩(◕‿◕)۶\n')
+                print(f'Robot found exit in {i.steps} steps\n')
+            else:
+                print('\n(╥﹏╥)\n')
+                print('Robot can\'t find exit\n')
+                # i.robot.show()
+            # print(i.robot)
+        elif n == 0:
+            prog = data1
             i = interpreter(program=prog)
             res = i.interpret()
             if res:
@@ -1066,33 +1105,6 @@ if __name__ == '__main__':
                         print(v)
             else:
                 print('Something wrong')
-            f.close()
-    elif n == 2:
-        print('1 - Empty map \n2 - Simple map \n3 - Big map')
-        m = int(input())
-        if m < 1 or m > 3:
-            print('Wrong number\n')
         else:
-            robot = create_robot(maps[m-1])
-        if m == 1:
-            f = open(algo[2])
-        else:
-            f = open(algo[1])
-        prog = f.read().lower()
-        f.close()
-        i = interpreter(program=prog, robot=robot)
-        i.robot.show()
-        res = i.interpret()
-        if res:
-            print('Symbol table:')
-            for symbol_table in i.symbol_table:
-                for k, v in symbol_table.items():
-                    print(v)
-        else:
-            print('Something wrong')
-        if i.exit:
-            print(f'Robot found exit in {i.steps} steps')
-        else:
-            print('Robot can\'t find exit')
-        print(i.robot)
+            print('Ok, exit')
 

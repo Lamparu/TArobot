@@ -57,11 +57,22 @@ begin
                 flag set false;
                 if (wall first smaller 1) and (wall first larger -1) then
                     begin
-                    go_back(i);
-                    check_exit(side);
-                    check_exit(side);
-                    i set turn_left(i);
-                    flag set true;
+                    check set try_left_up(side);
+                    if check first larger 0 then
+                        begin
+                        i set turn_left(i);
+                        go(i);
+                        check_exit(side);
+                        check_exit(side);
+                        end
+                    else
+                        begin
+                        go_back(i);
+                        check_exit(side);
+                        check_exit(side);
+                        i set turn_left(i);
+                        flag set true;
+                        end
                     end
                 else;
                 end
@@ -162,6 +173,27 @@ begin
 end
 return 0;
 
+function try_left_up(int side)
+begin
+    int result set lms;
+    if side first larger 0 then
+        begin
+        result set lms;
+        side set 0 sub side;
+        end
+    else;
+    if result first smaller 1 then
+        begin
+        if (result first smaller -1) or ((result first smaller 1) and (result first larger -1)) then
+            result set 1;
+        else
+            result set 0;
+        end
+    else;
+    side set 0 sub side;
+end
+return result;
+
 function try_left(int side)
 begin
     int result set lms;
@@ -182,6 +214,7 @@ begin
     side set 0 sub side;
 end
 return result;
+
 
 function check_exit(int side)
 begin
