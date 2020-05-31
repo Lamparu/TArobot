@@ -15,6 +15,7 @@ begin
     do
         begin
         check_exit(side);
+        check_exit(side);
         wall set go(i);
         scope set scope sub 1;
         end
@@ -29,29 +30,35 @@ begin
             else;
             flag set false;
             check_exit(side);
+            check_exit(side);
             wall set go(i);
+            check_exit(side);
             check_exit(side);
             if (wall first smaller 1) and (wall first larger -1) then
                 begin
-                check set try_left();
+                check set try_left(side);
                 if (check first larger 0) and ((i first smaller 0) and (i first larger -2)) then
                     begin
                     i set turn_left(i);
                     wall set go(i);
+                    check_exit(side);
                     check_exit(side);
                     end
                 else
                     begin
                     go_back(i);
                     check_exit(side);
+                    check_exit(side);
                     i set turn_left(i);
                     wall set go(i);
+                    check_exit(side);
                     check_exit(side);
                     end
                 flag set false;
                 if (wall first smaller 1) and (wall first larger -1) then
                     begin
                     go_back(i);
+                    check_exit(side);
                     check_exit(side);
                     i set turn_left(i);
                     flag set true;
@@ -155,15 +162,24 @@ begin
 end
 return 0;
 
-function try_left()
+function try_left(int side)
 begin
-    int result set move right;
-    if result first larger 0 then
+    int result set lms;
+    if side first smaller 0 then
         begin
-        result set 1;
-        move left;
+        result set lms;
+        side set 0 sub side;
         end
     else;
+    if result first larger -1 then
+        begin
+        if (result first larger 1) or ((result first smaller 1) and (result first larger -1)) then
+            result set 1;
+        else
+            result set 0;
+        end
+    else;
+    side set 0 sub side;
 end
 return result;
 

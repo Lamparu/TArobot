@@ -14,6 +14,7 @@ begin
     do
         begin
         check_exit(side);
+        check_exit(side);
         wall set go(i);
         scope set scope sub 1;
         end
@@ -28,19 +29,24 @@ begin
             else;
             flag set false;
             check_exit(side);
+            check_exit(side);
             wall set go(i);
+            check_exit(side);
             check_exit(side);
             if (wall first smaller 1) and (wall first larger -1) then
                 begin
                     go_back(i);
                     check_exit(side);
+                    check_exit(side);
                     i set turn_left(i);
                     wall set go(i);
+                    check_exit(side);
                     check_exit(side);
                     flag set false;
                     if (wall first smaller 1) and (wall first larger -1) then
                         begin
                         go_back(i);
+                        check_exit(side);
                         check_exit(side);
                         i set turn_left(i);
                         flag set true;
