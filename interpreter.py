@@ -691,7 +691,8 @@ class interpreter:
                     if index_scope != len(arr_indexes.keys()):
                         raise ArrayDeclarationError
                     var = arr_variable(arr_type, arr_name, arr_indexes, arr_values)
-                    self.symbol_table[self.scope][arr_name] = var
+                    if var is not None:
+                        self.symbol_table[self.scope][arr_name] = var
                 elif var_ch.type == 'variable':
                     arr_indexes = {}
                     for i in range(arr_scope):
@@ -701,7 +702,8 @@ class interpreter:
                         if i == -1:
                             raise ArrayDeclarationError
                     var = arr_variable(arr_type, arr_name, arr_indexes, arr_values)
-                    self.symbol_table[self.scope][arr_name] = var
+                    if var is not None:
+                        self.symbol_table[self.scope][arr_name] = var
 
         else:  # if type.type == 'type'
             if node.type == 'variable':
@@ -719,8 +721,9 @@ class interpreter:
                     raise RedeclarationError
                 if node.child[0].type != 'arr variable':
                     expr = self.interp_node(node.child[1])
-                    expr = self.converse.converse(expr, type.value)
-                    self.symbol_table[self.scope][var] = variable(type.value, var, expr.value)
+                    if expr is not None:
+                        expr = self.converse.converse(expr, type.value)
+                        self.symbol_table[self.scope][var] = variable(type.value, var, expr.value)
                 else:
                     raise ElementDeclarationError
 
@@ -866,7 +869,7 @@ class interpreter:
                 self.error.call(self.er_types['UndeclaredVariableError'], node)
                 raise UndeclaredVariableError
             expr = self.interp_node(node.child[1])
-            if expr != None:
+            if expr is not None:
                 var_class = self.symbol_table[self.scope][name]
                 if expr.type != var_class.type:
                     expr = self.converse.converse(expr, var_class.type)
