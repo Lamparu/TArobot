@@ -1,0 +1,39 @@
+function work()
+begin
+    int n set 7;
+    int res;
+    res set factorial(n);
+end
+return 0;
+
+function factorial(int n)
+begin
+    int res set n;
+    int idk set 0;
+    if n first smaller 0 then
+        res set 0;
+    else
+        if n first larger 0 then
+            begin
+            n set n sub 1;
+            idk set factorial(n);
+            n set n add 1;
+            res set mul(n idk);
+            end
+        else
+            res set 1;
+end
+return res;
+
+function mul(int r int i)
+begin
+int res set 0;
+int j set i;
+do
+    begin
+    res set res add r;
+    j set j sub 1;
+    end
+while j first larger 0;
+end
+return res;

@@ -1044,7 +1044,7 @@ def create_robot(descriptor):
 
 
 if __name__ == '__main__':
-    prog_names = ['Programs/algosort.txt', 'Programs/factorial.txt', 'Programs/test_errors.txt']
+    prog_names = ['Programs/algosort.txt', 'Programs/factorial.txt', 'Programs/test_errors.txt', 'Programs/factorial_recursion.txt']
     algo = ['Algorithms/right_hand.txt', 'Algorithms/rh_lms.txt', 'Algorithms/rh_empty.txt']
     maps = ['Maps/map_empty.txt', 'Maps/map_simple.txt', 'Maps/map_big.txt', 'Maps/map_no_exit.txt']
     n = 0
@@ -1052,9 +1052,9 @@ if __name__ == '__main__':
         print('\n==========\n1 - Algorithm \n2 - Robot \n3 - Exit\n==========\n')
         n = int(input())
         if n == 1:
-            print('1 - QuickSort \n2 - Factorial \n3 - Errors')
+            print('1 - QuickSort \n2 - Factorial \n3 - Errors \n4 - Factorial recursion')
             num = int(input())
-            if num < 1 or num > 3:
+            if num < 1 or num > 4:
                 print('Wrong number\n')
             else:
                 f = open(prog_names[num-1])
